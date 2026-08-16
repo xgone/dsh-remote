@@ -62,16 +62,22 @@
 
 ### 1. 安装插件包
 
-在**你的工作目录**（不是 profile 目录）执行：
+**NPM 安装（推荐）**——插件已发布到 npm registry，一行命令即可：
 
 ```sh
-# 方式 A（推荐）：从 npm 安装（已发布 @xgone/dsh-remote）
 dsh plugin --profile web add @xgone/dsh-remote
+```
 
-# 方式 B：安装公开 Git 仓库
+> - 包主页：https://www.npmjs.com/package/@xgone/dsh-remote
+> - 固定版本：`dsh plugin --profile web add @xgone/dsh-remote@0.1.0`
+
+其他安装方式：
+
+```sh
+# 从公开 Git 仓库安装
 dsh plugin --profile web add git@github.com:xgone/dsh-remote.git
 
-# 方式 C：安装本地源码目录（开发/自用，路径替换为你实际的源码位置）
+# 本地源码目录（开发/自用，路径替换为你实际的源码位置）
 dsh plugin --profile web add ~/path/to/dsh-remote
 ```
 
