@@ -1,5 +1,8 @@
 # dsh-remote
 
+[![npm version](https://img.shields.io/npm/v/@xgone/dsh-remote.svg)](https://www.npmjs.com/package/@xgone/dsh-remote)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **让 DeepSeek Harness 可以被安全地远程访问**：在 `dsh web` 前增加完整的账号密码认证 + MFA
 （两步验证）门禁，并打通外网部署所需的全部环节——外部浏览器登录后即可使用完整功能（含工作区
 选择、添加工作区等），全程不会在宿主机上弹出任何原生窗口。
@@ -62,14 +65,14 @@
 在**你的工作目录**（不是 profile 目录）执行：
 
 ```sh
-# 方式 A：安装本地源码目录（开发/自用，路径替换为你实际的源码位置）
-dsh plugin --profile web add ~/path/to/dsh-remote
+# 方式 A（推荐）：从 npm 安装（已发布 @xgone/dsh-remote）
+dsh plugin --profile web add @xgone/dsh-remote
 
-# 方式 B：安装 Git 仓库（公开仓库，可直接拉取）
+# 方式 B：安装公开 Git 仓库
 dsh plugin --profile web add git@github.com:xgone/dsh-remote.git
 
-# 方式 C：发布到 npm 后按包名安装
-dsh plugin --profile web add @xgone/dsh-remote
+# 方式 C：安装本地源码目录（开发/自用，路径替换为你实际的源码位置）
+dsh plugin --profile web add ~/path/to/dsh-remote
 ```
 
 `dsh plugin` 会做三件事：
