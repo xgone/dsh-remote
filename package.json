@@ -1,0 +1,56 @@
+{
+  "name": "@xgone/dsh-remote",
+  "version": "0.1.0",
+  "description": "Account/password authentication for the DeepSeek Harness web UI: login gate, signed session cookies, role-based access, and a Settings page for account management.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "author": "xgone <xl.gone@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xgone/dsh-remote.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xgone/dsh-remote/issues"
+  },
+  "homepage": "https://github.com/xgone/dsh-remote#readme",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "auth",
+    "authentication",
+    "login",
+    "remote"
+  ],
+  "dependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-home-paths": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "qrcode": "^1.5.4"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0"
+  }
+}

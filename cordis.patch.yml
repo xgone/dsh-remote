@@ -1,0 +1,73 @@
+# dsh-remote bundle patch: one row — the auth plugin (host + browser halves).
+#
+# Installed as a profile bundle with:
+#   dsh plugin --profile web add @xgone/dsh-remote
+# (pnpm installs the package and the reconcile step appends it to
+# `dsh.profile.bundles`, so the patch below composes on the next boot.)
+#
+# Protection is ON by default. The first boot with an empty account store
+# enters bootstrap mode: the login page offers creating the first admin
+# account, and that endpoint is loopback-only. Set `enabled: false` to
+# disable gating entirely.
+#
+# `accounts` here is a seed: plaintext passwords are hashed (scrypt) and the
+# entries are persisted to $DSH_HOME/auth/store.json, which becomes the
+# authoritative store managed from Settings > 登录与账号. Existing store
+# entries are never overwritten by a seed.
+
+- insert:
+    - id: remote
+      name: '@xgone/dsh-remote'
+      config:
+        enabled: true
+        accounts: []
+        # Optional stable signing secret; empty -> a random secret is
+        # generated once and persisted in $DSH_HOME/auth/store.json so
+        # sessions survive restarts.
+        secret: ''
+        session:
+          cookieName: dsh_session
+          ttlSeconds: 604800
+          secure: false
+          sameSite: lax
+        # Method-level access control on /api for non-admin roles:
+        #   admin: everything
+        #   user : denied settings.*/credentials.*/agentPreset.*/host.* and discovery
+        #   guest: additionally read-only (no prompts, no workspace/session writes)
+        enforceRoles: true
+        rateLimit:
+          maxAttempts: 5
+          windowMs: 900000
+
+# ── directory picker: force the IN-APP browse backend ────────────────────────
+#
+# The web-app bundle mounts `directory-picker-auto`, which resolves native at
+# boot whenever the bind looks loopback (reverse proxy / ssh -L to 127.0.0.1
+# included) and then pops the OS chooser on the HOST machine — invisible to a
+# remote browser. This plugin exists for remote access, so it swaps the row to
+# the browse backend: the picker becomes an in-browser directory dialog
+# (host.listDirectory / host.createDirectory) that works for every client and
+# never touches the host display.
+#
+# A patch row cannot RENAME an entry (name mismatch is skipped), so the swap
+# is: disable the auto chooser row, then insert the browse row under a new id.
+#
+# To restore the native/adaptive chooser for a strictly-local deployment, add
+# to the profile's cordis.patch.yml:
+#   - id: directory-picker
+#     disabled: false
+#   - id: directory-picker-browse
+#     disabled: true
+#   - id: directory-picker-browse-ui
+#     disabled: true
+- id: directory-picker
+  disabled: true
+- insert:
+    # host backend (in-app listing / creation over Node stdlib)
+    - id: directory-picker-browse
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+      config:
+        maxEntries: 1000
+    # browser surface (Select Workspace Directory dialog)
+    - id: directory-picker-browse-ui
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
