@@ -169,6 +169,7 @@ dsh plugin --profile web remove @xgone/dsh-remote
 | 创建管理员时报 403 | bootstrap 仅限 loopback：请在本机浏览器操作，或经 `ssh -L` 后访问 `127.0.0.1`；无本地浏览器的服务器请用下方 `bootstrap` 配置预置管理员 |
 | 被锁在门外（配置出错） | 编辑 `cordis.patch.yml` 设 `enabled: false` 重启；或删除 `$DSH_HOME/auth/store.json` 重新引导 |
 | 忘记 MFA / 丢手机 | 管理员登录后在 设置 → 登录与账号 → 该账号行 → 禁用 MFA（需管理员密码） |
+| 远程访问时「设置 → 插件」配置页空白 | v0.1.5+ 已内置修复：DSH 对远程浏览器把所有设置 scope 切成 memory 模式（读写在客户端被丢弃），插件启动时自动解除该限制并触发一次全量刷新，配置卡片远程可读可写；原始 settings.yaml 文档编辑器仍保持仅限本机（设计如此） |
 
 ### 9. 无浏览器服务器（headless / Linux）安装
 

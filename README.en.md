@@ -204,6 +204,7 @@ kept (delete that file manually if you want a complete reset).
 | 403 when creating the admin | bootstrap is loopback-only: operate from a local browser, or access `127.0.0.1` through `ssh -L`; on a server without a local browser use the `bootstrap` config below to provision the first admin |
 | Locked out (misconfiguration) | Set `enabled: false` in `cordis.patch.yml` and restart; or delete `$DSH_HOME/auth/store.json` to re-enter bootstrap mode |
 | Lost MFA / phone | An admin can sign in and go to Settings → Auth & Accounts → that account row → Disable MFA (requires the admin password) |
+| Settings → Plugins config page is blank over remote access | Built-in fix since v0.1.5: DSH switches every settings scope to memory mode for remote browsers (reads and writes are dropped client-side); the plugin unpins the scope queue at startup and triggers a full refresh, so the config cards are readable and writable remotely. The raw settings.yaml document editor intentionally stays loopback-only |
 
 ### 2.6 Headless / Linux server install (no local browser)
 
