@@ -1,6 +1,6 @@
 {
   "name": "@xgone/dsh-remote",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Account/password authentication for the DeepSeek Harness web UI: login gate, signed session cookies, role-based access, and a Settings page for account management.",
   "type": "module",
   "main": "lib/index.js",
