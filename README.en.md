@@ -1,0 +1,421 @@
+# dsh-remote
+
+[![npm version](https://img.shields.io/npm/v/@xgone/dsh-remote.svg)](https://www.npmjs.com/package/@xgone/dsh-remote)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**[English](README.en.md)** | [中文](README.md)
+
+**Make DeepSeek Harness safely accessible remotely**: a full account/password authentication +
+MFA (two-factor) gate in front of `dsh web`, plus everything needed for remote deployments — an
+external browser can sign in and use the full feature set (including workspace selection and
+"Add workspace"), without any native window ever popping up on the host machine.
+
+---
+
+## 1. Features (user perspective)
+
+### 1.1 Remote access to dsh
+
+- **Works over the internet / LAN**: once exposed behind a reverse proxy (nginx / ssh tunnel /
+  Tailscale / Frp, …), an external browser can sign in and use everything. DSH's built-in `/api`
+  trust fence hard-codes privileged methods (`host.pickDirectory`, `settings.*`, `credentials.*`,
+  …) to loopback (the official note says "until a real authentication layer exists") — this plugin
+  is that authentication layer and lets them through after authentication.
+- **No host OS dialogs for workspace selection**: DSH's default directory picker calls the host's
+  native OS chooser on loopback deployments (invisible to remote users). This plugin swaps the
+  picker to the **browse backend** — selecting/creating a workspace becomes an **in-browser
+  directory dialog** (two-pane directory view + breadcrumbs + "new folder").
+- **WebSocket works end to end**: the event downlinks (`events.mux` / `events.host`) establish
+  normally after authentication.
+
+### 1.2 Account/password authentication
+
+- **Complete login gate**: unauthenticated access to any path gets a self-contained login page;
+  `/api` and WebSocket all require a valid session cookie.
+- **Secure sessions**: HMAC-SHA256-signed HttpOnly cookies (configurable expiry, Secure,
+  SameSite); the signing secret is randomly generated and persisted (sessions survive restarts).
+- **Passwords stored safely**: scrypt hashes (`N=16384,r=8,p=1`) + constant-time comparison,
+  plaintext is never written to disk.
+- **Brute-force protection**: failed logins are rate limited per IP + username (default 5 attempts
+  in a 15-minute window).
+- **First-run bootstrap**: when no account exists, the login page offers "create the first admin",
+  submit only from the local machine (loopback) to prevent remote pre-registration.
+- **First account is protected**: the root account cannot be deleted or re-roled, only its
+  password can be reset (prevents locking yourself out by deleting the only admin).
+- **Admin-only mode (default)**: creating accounts at runtime is refused, every account is forced
+  to the admin role, and the "add account" form is hidden in Settings; set `adminOnly: false` to
+  re-enable multi-role account management.
+- **Optional roles**: with `adminOnly` off, three method-level roles are available —
+  `admin` / `user` / `guest`.
+
+### 1.3 MFA two-factor authentication (TOTP)
+
+- **Works with standard authenticators**: Google Authenticator, 1Password, Authy, … (RFC 6238,
+  6 digits / 30 s).
+- **Scan-to-bind**: enabling shows a QR code (SVG, verified scannable) + manual secret + otpauth
+  link + 10 one-time backup codes (backup codes are stored as SHA-256 hashes only).
+- **Live verification on sign-in**: the login page and the re-login overlay show a "valid for Ns"
+  countdown and **auto-submit** once 6 digits are entered (backup codes contain letters and still
+  use the button).
+- **Admin recovery**: an admin can disable MFA for any account using their own password.
+
+### 1.4 UX details
+
+- The login page is a complete auth surface on its own: password → code / in-place binding guide
+  (with QR code);
+- When the session expires, a full-screen re-login overlay appears inside the SPA with
+  auto-verify input;
+- Settings → Auth & Accounts: MFA self-service (enable/disable), account list (card style), reset
+  password, log out button.
+
+---
+
+## 2. Installation
+
+### 2.0 Prerequisites
+
+- DeepSeek Harness installed and able to run `dsh web` (default port 3080);
+- A `web` profile initialized (running `dsh web` once does this automatically);
+- `pnpm` on PATH (`dsh plugin` uses it to manage profile plugins).
+
+### 2.1 Install the plugin package
+
+**Install from npm (recommended)** — the plugin is published on the npm registry:
+
+```sh
+dsh plugin --profile web add @xgone/dsh-remote
+```
+
+> - Package page: https://www.npmjs.com/package/@xgone/dsh-remote
+> - Pin a version: `dsh plugin --profile web add @xgone/dsh-remote@0.1.1`
+
+Other ways to install:
+
+```sh
+# From the public Git repository
+dsh plugin --profile web add git@github.com:xgone/dsh-remote.git
+
+# From a local source checkout (development / personal use — adjust the path)
+dsh plugin --profile web add ~/path/to/dsh-remote
+```
+
+`dsh plugin` does three things:
+
+1. Installs the package with pnpm under `~/.dsh/profiles/web/` (output `+ @xgone/dsh-remote`
+   means success);
+2. Automatically appends `@xgone/dsh-remote` to the profile's `dsh.profile.bundles` (the package
+   declares `dsh.bundle.patch`) — no manual config needed;
+3. The plugin takes effect at the next boot's composition.
+
+### 2.2 Verify the install
+
+```sh
+# dsh-remote should appear in the bundles list
+python3 -c "import json; print(json.load(open('$HOME/.dsh/profiles/web/package.json'))['dsh']['profile']['bundles'])"
+# Expected output similar to: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@xgone/dsh-remote']
+```
+
+### 2.3 Restart `dsh web`
+
+HMR is disabled on the web surface, so a patch cannot hot-reload — **a restart is required**:
+
+```sh
+# Stop the current dsh web process and start it again (or restart your launcher)
+dsh web
+```
+
+### 2.4 First boot: create the admin
+
+After restarting, open `http://127.0.0.1:3080` in your browser:
+
+1. An unauthenticated visit shows the **login page** (self-contained, not an SPA);
+2. With no account yet, the login page is in **bootstrap mode**: the title reads "Create the first
+   admin account";
+3. Enter a username and password (at least 6 characters) and click create — **loopback only**, to
+   prevent remote pre-registration;
+4. Creation signs you in immediately (a session cookie is issued).
+
+> Verify: `curl http://127.0.0.1:3080/auth/me` should return
+> `{"authEnabled":true,"bootstrap":false,"authenticated":true,...}`.
+
+### 2.5 Bind MFA (recommended)
+
+After signing in, go to **Settings → Auth & Accounts → Two-factor authentication (MFA) → Enable
+two-factor**:
+
+1. The page shows a **QR code** (scan with Google Authenticator / 1Password / Authy);
+2. It also shows the manual secret, the otpauth link and **10 one-time backup codes** — save the
+   backup codes first;
+3. Enter the current 6-digit code from your authenticator → it auto-verifies and enables;
+4. Every sign-in afterwards requires password + code (or backup code).
+
+> You don't have to enter Settings: after the password step, the login page itself offers the
+> "bind two-factor" guide when MFA is not yet enabled.
+
+### 2.6 Verify the installation
+
+- Unauthenticated visit to any path → login page; calling `/api` directly → 403;
+- After signing in, `/api`, the WebSocket event stream and workspace selection (in-browser
+  directory dialog) all work;
+- After the session expires (or you log out) you return to the login page.
+
+### 2.7 Uninstall
+
+```sh
+dsh plugin --profile web remove @xgone/dsh-remote
+```
+
+`dsh plugin` runs pnpm remove and automatically drops the package from `dsh.profile.bundles`;
+after restarting `dsh web` the gate is gone. `$DSH_HOME/auth/store.json` and the account data are
+kept (delete that file manually if you want a complete reset).
+
+### 2.8 FAQ
+
+| Symptom | Fix |
+|---|---|
+| No login page after install | Not restarted: run `dsh web` again; or `@xgone/dsh-remote` is missing from the bundles list (re-run `dsh plugin --profile web add ...`) |
+| Login form submits but nothing happens | Make sure username/password are filled; `content-script.js` errors in the browser console are extension noise and can be ignored |
+| 403 when creating the admin | bootstrap is loopback-only: operate from a local browser, or access `127.0.0.1` through `ssh -L` |
+| Locked out (misconfiguration) | Set `enabled: false` in `cordis.patch.yml` and restart; or delete `$DSH_HOME/auth/store.json` to re-enter bootstrap mode |
+| Lost MFA / phone | An admin can sign in and go to Settings → Auth & Accounts → that account row → Disable MFA (requires the admin password) |
+
+## 3. Configuration (`cordis.patch.yml`)
+
+```yaml
+# ~/.dsh/profiles/web/cordis.patch.yml (overrides the whole config of the `remote` row;
+# unlisted keys fall back to schema defaults)
+- id: remote
+  config:
+    enabled: true
+    accounts: []            # seed accounts (plaintext passwords are hashed with scrypt at boot; or pass scrypt$<salt>$<hash> directly)
+    secret: ''              # empty = auto-generate and persist
+    session:
+      cookieName: dsh_session
+      ttlSeconds: 604800    # 7 days
+      secure: false         # set true for HTTPS deployments
+      sameSite: lax
+    enforceRoles: true      # admin/user/guest method-level permissions
+    adminOnly: true         # admin accounts only (default)
+    trustProxy: true        # normalize Host/Origin of authenticated requests (default)
+    mfa:
+      enabled: true
+      issuer: DeepSeek Harness
+      window: 1             # allow ±1 30-second step
+      backupCodes: 10
+    rateLimit:
+      maxAttempts: 5
+      windowMs: 900000
+```
+
+Disable authentication entirely: `enabled: false`.
+
+---
+
+## 4. Implementation details
+
+### Architecture overview
+
+The plugin is a **Cordis dual-half package + bundle patch**:
+
+```
+dsh-remote/
+├── cordis.patch.yml   # bundle patch: inserts the `remote` row; swaps the directory picker backend
+├── lib/
+│   ├── index.js       # host half: gate, sessions, rate limiting, roles, trustProxy, /auth/* routes
+│   ├── store.js       # account store (scrypt hashes, protected flag, TOTP state, backup-code hashes)
+│   ├── totp.js        # RFC 6238 TOTP / base32 / otpauth URI / backup codes (zero-dependency)
+│   ├── login-page.js  # self-contained login page (password → code → bind guide, incl. QR), zh/en
+│   └── client.js      # browser half: re-login overlay, Settings "Auth & Accounts" page, log out
+└── package.json       # dsh.bundle.patch + dsh.client declaration + ./client export
+```
+
+- After install, `dsh plugin` appends `@xgone/dsh-remote` to `dsh.profile.bundles`; the patch
+  composes at boot;
+- The host half activates via `inject: ["webServer"]`; the browser half is picked up by the
+  client module system into `window.__DSH_BOOT__` and mounts into `settings.section` / overlays.
+
+### 4.1 The gate (`lib/index.js`)
+
+DSH's `webServer` routing model is "exact table → prefix table → fallback" with **no middleware
+hook**. The plugin implements a full gate by **wrapping the route-registration methods and
+in-place wrapping of already-registered entries**:
+
+- Wraps `register` / `registerUpgrade` / `registerFallback`, and wraps every **already-registered**
+  entry in `webServer.exact / prefixes / upgrades` and the `fallback` (a `Symbol` marker prevents
+  double wrapping; a `WeakMap` keeps the originals so the unload can restore them);
+- Wrapped HTTP handlers: `/auth/*` passes through → without a valid session, page requests get the
+  login page and everything else gets 403 → after passing, **Host/Origin are normalized before
+  handing off** (see `trustProxy`);
+- WebSocket upgrade handshake: no cookie → the socket is destroyed;
+- Role gating: non-admin sessions first read the RPC envelope (up to 16 MiB), look up the `method`
+  in a deny table and 403 on a hit; allowed requests are handed down with a replayable body
+  (`Readable` + `Proxy`); admin requests have zero overhead.
+
+### 4.2 Sessions and credentials
+
+- **Session cookie**: `v1.<base64url payload>.<HMAC-SHA256 sig>`, payload is
+  `{sub, role, iat, exp}`; verification recomputes the signature and compares in constant time,
+  and the account must still exist (deleting it invalidates the session);
+- **MFA challenge token**: `mfa.<payload>.<sig>`, 5-minute validity, single-use (a consumed-nonce
+  set prevents replay);
+- **Password**: scrypt (`node:crypto`), verified asynchronously at sign-in with constant-time
+  comparison;
+- **Rate limiting**: in-memory table keyed by `IP:username`; the password step and the MFA step
+  use different keys (a failed MFA count is not cleared by a successful password step).
+
+### 4.3 Remote access (`trustProxy`)
+
+DSH's built-in browser trust fence (`dsh-client-connection`) checks `Host` (loopback or
+`trustedHosts`), that `Origin` matches the Host, that `sec-fetch-site` is not cross-site, and
+**privileged methods** (`host.pickDirectory`, `settings.*`, `credentials.*`, …) are hard-coded to
+loopback. After authentication the plugin normalizes the request's `Host`/`Origin` to
+`127.0.0.1:<port>` (preserving the original scheme) before handing it down — the fence sees
+loopback and privileged methods work for external browsers. Unauthenticated requests are still
+403'd by the gate, so the fence's DNS-rebinding semantics are no longer needed behind the cookie.
+
+### 4.4 Storage (`lib/store.js`)
+
+`$DSH_HOME/auth/store.json` (0600, atomic writes):
+
+```jsonc
+{
+  "version": 1,
+  "secret": "<base64url 32B>",          // session/MFA token signing secret
+  "accounts": [{
+    "username": "admin",
+    "role": "admin",
+    "passwordHash": "scrypt$<salt>$<hash>",
+    "protected": true,                  // first account: cannot be removed or re-roled
+    "totp": { "secret": "<base32>", "verified": true, "createdAt": 0 },  // empty when not enabled
+    "backupCodes": [{ "hash": "<sha256>", "usedAt": 0 }],                // hashes only
+    "createdAt": 0, "updatedAt": 0, "lastLoginAt": 0
+  }]
+}
+```
+
+Migration: if an older store has no `protected` field, the account with the earliest `createdAt`
+is automatically marked protected and persisted.
+
+### 4.5 TOTP (`lib/totp.js`, zero-dependency)
+
+- base32 encode/decode (RFC 4648) and `otpauth://` URI construction;
+- TOTP = HMAC-SHA1(secret, 8-byte big-endian counter) dynamic truncation to 6 digits, 30-second
+  period; verification supports a ±window step; validated against the RFC 6238 SHA-1 appendix
+  vectors (T=0..5);
+- Backup codes: 10 unambiguous 8-character codes, stored as SHA-256 hashes, each usable once.
+
+### 4.6 Login page (`lib/login-page.js`)
+
+Rendered inline by the wrapped fallback for unauthenticated browsers — **zero external
+resources**. State machine: `password → (code | offer) → setup`. i18n: `zh` / `en`, selected at
+render time from the request's `Accept-Language`.
+
+- Password step → with MFA, moves to the code step (with a "valid for Ns" countdown and 6-digit
+  auto-submit);
+- Without MFA, shows the "bind two-factor" guide (skippable);
+- The bind step shows the QR code (`/auth/mfa/setup` returns an SVG data URL) + secret + otpauth +
+  backup codes + verify input; on success it redirects to `next`;
+- The form uses `novalidate` + manual JS validation (so hidden required controls never block
+  submission).
+
+### 4.7 Browser half (`lib/client.js`)
+
+Hand-written `window.__ModuleLoader__.load({id, factory})` format (same as official bundles, no
+bundler needed), mounted via `require("react")` / `react-dom/client`. All UI copy goes through a
+built-in zh/en `t()` table selected by `document.documentElement.lang`.
+
+- **Re-login overlay**: polls `/auth/me` (15 s + on focus); when unauthenticated and auth is
+  enabled, a full-screen login overlay covers the app (supports the MFA second step);
+- **Settings → Auth & Accounts** (`settings.section` slot with a user icon; CSS hides the shell's
+  default gear): status, MFA self-service, account card list (reset password / disable MFA /
+  remove), log out;
+- All data goes through `fetch("/auth/*")` (same-origin cookies), independent of the settings
+  domain (third-party code cannot register there).
+
+### 4.8 Directory picker swap (`cordis.patch.yml`)
+
+Patch rows **cannot be renamed** (a `name mismatch` is skipped), so the swap is "disable +
+insert":
+
+```yaml
+- id: directory-picker        # disable the auto picker (resolves to native on loopback and pops on the host)
+  disabled: true
+- insert:
+    - id: directory-picker-browse      # browse host backend (host.listDirectory / createDirectory)
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+      config: { maxEntries: 1000 }
+    - id: directory-picker-browse-ui   # browser-side directory dialog
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
+```
+
+### 4.9 Security model (threat analysis)
+
+| Attack surface | Defense |
+|---|---|
+| Unauthenticated `/api` / static pages / WebSocket | gate 403 / login page / handshake rejection |
+| Password brute force | scrypt + rate limiting (IP+username) |
+| Session forgery/tampering | HMAC signature + expiry + constant-time compare + account-existence check |
+| Session replay (MFA second step) | single-use nonce + 5-minute TTL |
+| Remote admin pre-registration | bootstrap loopback-only |
+| Deleting the only admin | protected account + last-admin protection |
+| Cross-site requests (CSRF) | HttpOnly + SameSite=lax; cross-site requests carry no cookie, so the gate 403s |
+| DNS rebinding | the auth layer takes over the fence semantics; unauthenticated requests never reach the fence |
+
+---
+
+## 5. Remote deployment
+
+`dsh web` still refuses `--host 0.0.0.0`, so expose it through a reverse proxy (TLS
+termination + WebSocket forwarding):
+
+```nginx
+server {
+  listen 8443 ssl;
+  server_name dsh.example.com;
+  ssl_certificate     /etc/letsencrypt/live/dsh.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/dsh.example.com/privkey.pem;
+  location / {
+    proxy_pass http://127.0.0.1:3080;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;      # WebSocket (events.mux/host)
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;                 # preserve the external Host
+    proxy_set_header Origin $http_origin;
+  }
+}
+```
+
+The same applies to `ssh -R` tunnels, Tailscale, Frp, etc. For HTTPS deployments set
+`session.secure` to `true`.
+
+## 6. Multi-account model (design notes)
+
+- **Done**: multiple accounts + roles (admin/user/guest), centralized management, MFA, audit
+  fields (created/updated/last login);
+- **Not possible at plugin level**: per-user workspaces/sessions (multi-tenant data isolation) —
+  DSH core is single-tenant (`$DSH_HOME` is process-wide), so event streams, search, tasks, etc.
+  leak globally and cannot be isolated by a plugin;
+- **Recommended**: one profile instance per person (`dsh --profile alice --port 3081`) gives
+  natural data isolation; for a shared instance, use the role system.
+
+## 7. Endpoint reference
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/auth/login` | Sign in; returns `{mfaRequired, mfaToken}` when MFA is on (no cookie issued) |
+| POST | `/auth/mfa/login` | Second step: `{mfaToken, code}` (TOTP or backup code) |
+| POST | `/auth/logout` | Clear the cookie |
+| GET | `/auth/me` | `{authEnabled, bootstrap, authenticated, username, role, mfa, adminOnly}` |
+| POST | `/auth/bootstrap` | First-admin bootstrap (loopback only, empty store only) |
+| POST | `/auth/mfa/setup` | Generate secret + otpauth + QR + backup codes (pending state) |
+| POST | `/auth/mfa/verify` | Confirm the pending setup with a TOTP code |
+| POST | `/auth/mfa/disable` | Disable MFA for the current account (needs password + valid code/backup code) |
+| POST | `/auth/accounts` | Admin: `{action: list\|upsert\|remove\|disable-mfa, ...}` |
+
+## 8. Limitations and escape hatches
+
+- HMR is disabled on the web surface — **restart `dsh web`** after config changes;
+- Escape hatch: set `enabled: false` and restart to disable the gate; or delete
+  `$DSH_HOME/auth/store.json` to re-enter bootstrap mode;
+- Restore the native directory picker: see section 4.8 for the patch snippet (invert the
+  `disabled` flags).
