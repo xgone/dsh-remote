@@ -52,6 +52,20 @@
 - 会话过期时 SPA 内出现全屏重登浮层，输入自动验证；
 - 设置 → 登录与账号：MFA 自服务（开启/关闭）、账号列表（卡片式）、重置密码、退出登录按钮。
 
+### 5. 多语言支持（`zh` / `en`）
+
+插件的全部界面——登录页、MFA 绑定引导、重登浮层、设置页（登录与账号）——均提供中英双语，跟随 **DSH 应用语言设置**（Settings → General → Language）：
+
+- **登录页**：服务端渲染，优先读 `$DSH_HOME/settings.yaml` 的 `locale.preference`（即 DSH 应用语言），未设置时回落浏览器 `Accept-Language`；
+- **应用内界面**：接入官方 `@deepseek-ai/dsh-client-locale` 服务（`ctx.locale`），注册插件的 zh/en 字典并实时跟随语言切换——切换语言时设置页与浮层即时更新，无需刷新。
+
+**远程浏览器语言持久化**：DSH 出于安全设计把整个设置面钉死在 loopback（本机）——远程浏览器的设置读写只进内存，语言偏好在 DSH 原生机制下刷新即丢。本插件作为远程部署的认证层，为非 loopback 浏览器接管了语言配置的双向通道：
+
+- **读**：启动时经标准 `settings.describe` RPC 取回持久化偏好并应用到界面（登录页也在服务端读同一份偏好）；
+- **写**：语言切换经标准 `settings.mutate` RPC 落盘 `settings.yaml`，跨浏览器、跨设备一致。
+
+本机（`127.0.0.1` / `localhost`）访问完全走 DSH 原生 host-backed 路径，插件不做任何介入。两条通道都基于 DSH UI 自身使用的标准 RPC 信封，不魔改任何宿主内部状态。
+
 ---
 
 ## 二、安装引导（Installation）

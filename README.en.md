@@ -68,6 +68,32 @@ external browser can sign in and use the full feature set (including workspace s
 - Settings → Auth & Accounts: MFA self-service (enable/disable), account list (card style), reset
   password, log out button.
 
+### 1.5 Localization (`zh` / `en`)
+
+Every plugin surface — the login page, MFA binding guide, re-login overlay, and the Settings →
+Auth & Accounts page — ships in both English and Chinese, following the **DSH app language**
+(Settings → General → Language):
+
+- **Login page**: server-rendered; prefers `locale.preference` in `$DSH_HOME/settings.yaml` (the
+  DSH app language) and falls back to the browser's `Accept-Language` when unset;
+- **In-app UI**: wired into the official `@deepseek-ai/dsh-client-locale` service (`ctx.locale`) —
+  the plugin registers its zh/en dictionaries and follows language switches live: the settings
+  page and overlays update instantly, no refresh needed.
+
+**Remote-browser language persistence**: by design DSH pins the whole settings plane to loopback
+— settings reads/writes from non-loopback (remote) browsers stay in memory, so the language
+preference reverts on every refresh under DSH's native mechanism. As the authentication layer for
+remote deployments, this plugin takes over both directions of the language preference for
+non-loopback browsers:
+
+- **Read**: at boot, the persisted preference is fetched via the standard `settings.describe` RPC
+  and applied to the UI (the login page reads the same preference server-side);
+- **Write**: every language switch is mirrored into `settings.yaml` via the standard
+  `settings.mutate` RPC — consistent across browsers and devices.
+
+Local (`127.0.0.1` / `localhost`) access keeps DSH's native host-backed path untouched. Both
+directions use the same standard RPC envelope DSH's own UI uses — no host internals are patched.
+
 ---
 
 ## 2. Installation
