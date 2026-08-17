@@ -166,9 +166,37 @@ dsh plugin --profile web remove @xgone/dsh-remote
 |---|---|
 | 安装后无登录页 | 未重启：执行 `dsh web` 重启；或 bundles 列表里没有 `@xgone/dsh-remote`（重跑 `dsh plugin --profile web add ...`） |
 | 登录页提交无反应 | 确认表单已填用户名/密码；浏览器控制台的 `content-script.js` 报错是扩展噪音，可忽略 |
-| 创建管理员时报 403 | bootstrap 仅限 loopback：请在本机浏览器操作，或经 `ssh -L` 后访问 `127.0.0.1` |
+| 创建管理员时报 403 | bootstrap 仅限 loopback：请在本机浏览器操作，或经 `ssh -L` 后访问 `127.0.0.1`；无本地浏览器的服务器请用下方 `bootstrap` 配置预置管理员 |
 | 被锁在门外（配置出错） | 编辑 `cordis.patch.yml` 设 `enabled: false` 重启；或删除 `$DSH_HOME/auth/store.json` 重新引导 |
 | 忘记 MFA / 丢手机 | 管理员登录后在 设置 → 登录与账号 → 该账号行 → 禁用 MFA（需管理员密码） |
+
+### 9. 无浏览器服务器（headless / Linux）安装
+
+服务器没有本地浏览器时，UI 的「创建管理员」引导（仅限 loopback）无法使用。用 `bootstrap`
+配置节在启动时直接预置首个管理员（等价于 loopback 引导：同样受保护、管理员角色、scrypt 哈希）：
+
+```sh
+dsh plugin --profile web add @xgone/dsh-remote
+# 编辑 ~/.dsh/profiles/web/cordis.patch.yml，给 remote 行加 config:
+```
+
+```yaml
+- id: remote
+  config:
+    enabled: true
+    bootstrap:
+      username: admin          # 首次启动时创建（仅当账号库为空）
+      password: '换成一个强密码'
+```
+
+要点：
+
+- **幂等**：账号库非空后该配置被忽略（日志提示移除凭据），不会重复创建、不会覆盖已有密码；
+- 密码至少 6 位（与 UI 引导一致），违规会在启动时报错并中止；
+- 首账号与 UI 引导一致：`protected: true`（不可删除/降级，仅可重置密码）；
+- 建议首次登录后从 `cordis.patch.yml` 移除该配置节（保留也无风险——账号存在后即失效），
+  之后可在 设置 → 登录与账号 绑定 MFA；
+- 反向代理部署只需再加 `trustProxy: true`（默认已开启）。
 
 ## 三、配置（`cordis.patch.yml`）
 
@@ -187,6 +215,9 @@ dsh plugin --profile web remove @xgone/dsh-remote
     enforceRoles: true      # admin/user/guest 方法级权限
     adminOnly: true         # 仅管理员账号（默认）
     trustProxy: true        # 已认证请求归一化 Host/Origin，放行外部访问（默认）
+    bootstrap:
+      username: admin       # 可选：无浏览器服务器预置首个管理员（账号库为空时生效）
+      password: '...'
     mfa:
       enabled: true
       issuer: DeepSeek Harness

@@ -201,9 +201,41 @@ kept (delete that file manually if you want a complete reset).
 |---|---|
 | No login page after install | Not restarted: run `dsh web` again; or `@xgone/dsh-remote` is missing from the bundles list (re-run `dsh plugin --profile web add ...`) |
 | Login form submits but nothing happens | Make sure username/password are filled; `content-script.js` errors in the browser console are extension noise and can be ignored |
-| 403 when creating the admin | bootstrap is loopback-only: operate from a local browser, or access `127.0.0.1` through `ssh -L` |
+| 403 when creating the admin | bootstrap is loopback-only: operate from a local browser, or access `127.0.0.1` through `ssh -L`; on a server without a local browser use the `bootstrap` config below to provision the first admin |
 | Locked out (misconfiguration) | Set `enabled: false` in `cordis.patch.yml` and restart; or delete `$DSH_HOME/auth/store.json` to re-enter bootstrap mode |
 | Lost MFA / phone | An admin can sign in and go to Settings → Auth & Accounts → that account row → Disable MFA (requires the admin password) |
+
+### 2.6 Headless / Linux server install (no local browser)
+
+On a server without a local browser the "create the first admin" flow (loopback-only) is
+unreachable. Provision the first admin at startup from config instead — equivalent to the
+loopback bootstrap: same root protection, admin role, scrypt hashing:
+
+```sh
+dsh plugin --profile web add @xgone/dsh-remote
+# edit ~/.dsh/profiles/web/cordis.patch.yml and add a config to the remote row:
+```
+
+```yaml
+- id: remote
+  config:
+    enabled: true
+    bootstrap:
+      username: admin          # created on first start (only while the account store is empty)
+      password: 'pick-a-strong-password'
+```
+
+Notes:
+
+- **Idempotent**: once any account exists the config is ignored (the log tells you to remove the
+  credentials); it never recreates an account or overwrites an existing password;
+- The password must be at least 6 characters (same rule as the UI bootstrap); a violation fails
+  startup with a clear error;
+- The first account behaves exactly like a UI bootstrap: `protected: true` (cannot be deleted or
+  re-roled, password resettable only);
+- After first login, remove the config block (leaving it is harmless — it is dead once accounts
+  exist); you can bind MFA afterwards in Settings → Auth & Accounts;
+- Reverse-proxy deployments only need `trustProxy: true` (already the default).
 
 ## 3. Configuration (`cordis.patch.yml`)
 
@@ -223,6 +255,9 @@ kept (delete that file manually if you want a complete reset).
     enforceRoles: true      # admin/user/guest method-level permissions
     adminOnly: true         # admin accounts only (default)
     trustProxy: true        # normalize Host/Origin of authenticated requests (default)
+    bootstrap:
+      username: admin       # optional: provision the first admin on headless servers (only while the store is empty)
+      password: '...'
     mfa:
       enabled: true
       issuer: DeepSeek Harness
