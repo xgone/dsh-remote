@@ -176,7 +176,6 @@ dsh plugin --profile web remove @xgone/dsh-remote
 | 被锁在门外（配置出错） | 编辑 `cordis.patch.yml` 设 `enabled: false` 重启；或删除 `$DSH_HOME/auth/store.json` 重新引导 |
 | 忘记 MFA / 丢手机 | 管理员登录后在 设置 → 登录与账号 → 该账号行 → 禁用 MFA（需管理员密码） |
 | 远程访问时「设置 → 插件」配置页空白 | v0.1.5+ 已内置修复：DSH 对远程浏览器把所有设置 scope 切成 memory 模式（读写在客户端被丢弃），插件启动时自动解除该限制并触发一次全量刷新，配置卡片远程可读可写；原始 settings.yaml 文档编辑器仍保持仅限本机（设计如此） |
-| 远程刷新后反复弹出「内测声明」 | v0.1.6+ 已内置修复：DSH 的欢迎弹窗确认态（`WelcomeNoticeStore`）对远程走 memory 模式，确认不读不写、每次刷新都当未确认；插件把实例切回 host 模式后，点一次「继续」即持久化，之后不再弹（DSH 升版本后会按官方逻辑重新提醒） |
 
 ### 9. 无浏览器服务器（headless / Linux）安装
 
