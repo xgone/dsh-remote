@@ -10,6 +10,12 @@ MFA (two-factor) gate in front of `dsh web`, plus everything needed for remote d
 external browser can sign in and use the full feature set (including workspace selection and
 "Add workspace"), without any native window ever popping up on the host machine.
 
+### Screenshots
+
+| Login gate (any path, unauthenticated) | Settings → Auth & Accounts |
+|:---:|:---:|
+| ![Login page](docs/login-en.png) | ![Account management settings](docs/settings-en.png) |
+
 ---
 
 ## 1. Features (user perspective)
