@@ -234,9 +234,21 @@ dsh plugin --profile web add @xgone/dsh-remote
     rateLimit:
       maxAttempts: 5
       windowMs: 900000
+    gzip:
+      enabled: true          # 响应 gzip 压缩总开关（默认开）
+      remoteOnly: true       # 仅对远程（非 loopback Host）请求压缩；false 则本地也压
+      minBytes: 1024         # 已知 Content-Length 小于此字节数的响应不压缩
 ```
 
 关闭认证：`enabled: false`。
+
+**响应 gzip 压缩**：插件会为**认证后**的可压缩响应（HTML / CSS / JS / JSON / SVG / manifest 等）自动
+gzip 压缩，显著减小远程访问时大历史会话与大型 bundle 的传输体积；并给带 rev 的哈希静态资源
+加 `Cache-Control: immutable` 与 `CDN-Cache-Control` 以配合 Cloudflare 等边缘缓存。默认**仅对
+远程（非 loopback）浏览器压缩**（`gzip.remoteOnly: true`），本机直连不压缩省 CPU；需要本地也
+压缩可设 `false`。SSE 事件流、二进制类型（`image/*` 等）、已压缩响应（带 `Content-Encoding`）、
+`204/206/304` 与过小的响应（`Content-Length < minBytes`）不会被压缩。`gzip.enabled: false` 可
+完全关闭。
 
 ---
 
