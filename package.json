@@ -16,6 +16,11 @@
     "README.en.md",
     "LICENSE"
   ],
+  "scripts": {
+    "check": "node --check lib/index.js",
+    "test": "node --check lib/index.js && node --test test/gzip.test.js",
+    "prepublishOnly": "node --check lib/index.js && node --test test/gzip.test.js"
+  },
   "license": "MIT",
   "author": "xgone <xl.gone@gmail.com>",
   "repository": {

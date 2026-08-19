@@ -274,9 +274,23 @@ Notes:
     rateLimit:
       maxAttempts: 5
       windowMs: 900000
+    gzip:
+      enabled: true          # master switch for response gzip compression (default on)
+      remoteOnly: true       # compress only remote (non-loopback Host) requests; false compresses local too
+      minBytes: 1024         # skip compression when a known Content-Length is below this
 ```
 
 Disable authentication entirely: `enabled: false`.
+
+**Response gzip compression**: the plugin gzips compressible responses (HTML / CSS / JS /
+JSON / SVG / manifest, etc.) served to **authenticated** clients, noticeably shrinking large
+history loads and big static bundles over a remote tunnel, and adds `Cache-Control: immutable`
+plus `CDN-Cache-Control` to rev-hashed assets so Cloudflare and similar edges cache them. By
+default it compresses **only remote (non-loopback Host) browsers** (`gzip.remoteOnly: true`)
+to save local CPU; set `false` to also compress local. SSE streams, binary types
+(`image/*`, etc.), already-compressed responses (any `Content-Encoding`), `204/206/304` and
+small responses (`Content-Length < minBytes`) are never compressed. `gzip.enabled: false`
+turns it off completely.
 
 ---
 
