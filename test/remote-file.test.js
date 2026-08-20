@@ -46,3 +46,16 @@ test("checkFilePathAgainst: rejects missing / empty / non-file paths", () => {
 	assert.equal(checkFilePathAgainst(null).reason, "no-path");
 	assert.equal(checkFilePathAgainst(join(root, "nope.txt"), [root]).reason, "not-found");
 });
+
+test("checkFilePathAgainst: case-insensitive comparison (Windows-style) matches differently-cased roots", () => {
+	// On a case-insensitive filesystem (win32) realpath returns one canonical
+	// spelling while the configured root may use another; the comparison must
+	// fold case. The flag lets this run on case-sensitive hosts too.
+	const upperRoot = root.replace(root.split("/").pop(), root.split("/").pop().toUpperCase());
+	writeFileSync(join(root, "CaseProbe.txt"), "x");
+	const verdict = checkFilePathAgainst(join(root, "CaseProbe.txt"), [upperRoot], { caseInsensitive: true });
+	assert.equal(verdict.ok, true, "differently-cased root must match");
+	// Without the flag the same pair is rejected (case-sensitive comparison).
+	const strict = checkFilePathAgainst(join(root, "CaseProbe.txt"), [upperRoot], { caseInsensitive: false });
+	assert.equal(strict.ok, false);
+});
