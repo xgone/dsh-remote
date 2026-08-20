@@ -289,11 +289,18 @@ Disable authentication entirely: `enabled: false`.
 **Remote file display**: clicking a file path in the DSH web UI fires the `host.openPath`
 RPC, which hands the path to the **host** desktop's default application — invisible to a
 remote browser user. This plugin intercepts that RPC for remote (non-loopback) browsers and
-opens an **in-app viewer modal** instead (backed by the host-streamed `/auth/file` route):
-markdown renders with the shell's own markdown renderer, images / PDF / video display inline,
-text and code preview in a monospace block, directories render as a clickable, navigable
-listing, and non-previewable binaries fall back to download / open-in-new-tab; close with Esc
-or a backdrop click. Reads are confined to the DSH home
+shows the file in a **right side panel** instead (host-streamed `/auth/file`, Claude
+Desktop-style):
+- markdown renders with the shell's own markdown renderer; images / PDF / video display
+  inline; text and code preview monospaced; directories navigate level by level
+- **multiple panes** can be open at once and split the panel vertically; every pane has its
+  own maximize (fill the whole sidebar, toggleable) and close button in its top-right corner
+- each pane's header shows the file name and full path; the sidebar's left edge is draggable
+  to resize; Esc closes the maximized / topmost pane
+- non-previewable binaries fall back to download / open-in-new-tab
+
+DSH's native right "details" column (session details, single slot) is untouched — this
+sidebar coexists with it as an overlay. Reads are confined to the DSH home
 directory, the process working directory and any extra `files.roots` (realpath-checked, so
 symlink escapes and `..` traversal are rejected); loopback browsers keep DSH's native
 behavior. `files.enabled: false` turns it off entirely.
