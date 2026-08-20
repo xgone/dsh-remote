@@ -244,6 +244,18 @@ dsh plugin --profile web add @xgone/dsh-remote
       maxListing: 500        # 目录索引每页最多渲染的条目数
 ```
 
+> **Windows 提示**：默认根目录是 DSH 主目录与 dsh 进程工作目录（通常是 profile 目录），工作区文件常在
+> 其他盘符路径下。被拒绝时面板会直接显示当前允许的根目录列表；把工作区所在目录加入 `files.roots`
+> 即可，YAML 中路径写双反斜杠或正斜杠：
+>
+> ```yaml
+> remote:
+>   files:
+>     roots:
+>       - "E:\\CODE"
+>       - "D:/projects"
+> ```
+
 关闭认证：`enabled: false`。
 
 **远程文件显示**：DSH 的 Web UI 点击文件路径时走 `host.openPath` RPC，把路径交给**宿主机**桌面
