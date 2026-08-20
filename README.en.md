@@ -278,9 +278,32 @@ Notes:
       enabled: true          # master switch for response gzip compression (default on)
       remoteOnly: true       # compress only remote (non-loopback Host) requests; false compresses local too
       minBytes: 1024         # skip compression when a known Content-Length is below this
+    files:
+      enabled: true          # master switch for remote file display via /auth/file (default on)
+      roots: []              # extra allowed read roots (absolute paths)
+      maxListing: 500        # max entries rendered per directory listing page
 ```
 
 Disable authentication entirely: `enabled: false`.
+
+**Remote file display**: clicking a file path in the DSH web UI fires the `host.openPath`
+RPC, which hands the path to the **host** desktop's default application — invisible to a
+remote browser user. This plugin intercepts that RPC for remote (non-loopback) browsers and
+shows the file in a **right side panel** instead (host-streamed `/auth/file`, Claude
+Desktop-style):
+- markdown renders with the shell's own markdown renderer; images / PDF / video display
+  inline; text and code preview monospaced; directories navigate level by level
+- **multiple panes** can be open at once and split the panel vertically; every pane has its
+  own maximize (fill the whole sidebar, toggleable) and close button in its top-right corner
+- each pane's header shows the file name and full path; the sidebar's left edge is draggable
+  to resize; Esc closes the maximized / topmost pane
+- non-previewable binaries fall back to download / open-in-new-tab
+
+DSH's native right "details" column (session details, single slot) is untouched — this
+sidebar coexists with it as an overlay. Reads are confined to the DSH home
+directory, the process working directory and any extra `files.roots` (realpath-checked, so
+symlink escapes and `..` traversal are rejected); loopback browsers keep DSH's native
+behavior. `files.enabled: false` turns it off entirely.
 
 **Response gzip compression**: the plugin gzips compressible responses (HTML / CSS / JS /
 JSON / SVG / manifest, etc.) served to **authenticated** clients, noticeably shrinking large
