@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkFilePathAgainst } from "../lib/index.js";
@@ -48,14 +48,31 @@ test("checkFilePathAgainst: rejects missing / empty / non-file paths", () => {
 });
 
 test("checkFilePathAgainst: case-insensitive comparison (Windows-style) matches differently-cased roots", () => {
-	// On a case-insensitive filesystem (win32) realpath returns one canonical
-	// spelling while the configured root may use another; the comparison must
-	// fold case. The flag lets this run on case-sensitive hosts too.
-	const upperRoot = root.replace(root.split("/").pop(), root.split("/").pop().toUpperCase());
-	writeFileSync(join(root, "CaseProbe.txt"), "x");
-	const verdict = checkFilePathAgainst(join(root, "CaseProbe.txt"), [upperRoot], { caseInsensitive: true });
+	// Simulate the win32 realpath-casing bug on any host: create a probe
+	// directory and address its root with a differently-cased spelling.
+	//  - case-sensitive host (CI Linux): the upper-cased spelling is a real,
+	//    distinct directory — realpath resolves it, and the comparison decides.
+	//  - case-insensitive host (macOS/Windows): mkdir with the upper-cased
+	//    spelling collides, and realpath returns the canonical spelling no
+	//    matter which case addressed it — exactly the win32 behavior.
+	const lower = join(root, "caseprobe");
+	const upper = join(root, "CASEPROBE");
+	mkdirSync(lower);
+	try {
+		mkdirSync(upper);
+	} catch {
+		// case-insensitive filesystem: same directory, skip
+	}
+	const extraRoot = realpathSync(upper); // canonical spelling of the root
+	writeFileSync(join(lower, "CaseProbe.txt"), "x");
+	const verdict = checkFilePathAgainst(join(lower, "CaseProbe.txt"), [extraRoot], { caseInsensitive: true });
 	assert.equal(verdict.ok, true, "differently-cased root must match");
-	// Without the flag the same pair is rejected (case-sensitive comparison).
-	const strict = checkFilePathAgainst(join(root, "CaseProbe.txt"), [upperRoot], { caseInsensitive: false });
-	assert.equal(strict.ok, false);
+	// Strict (case-sensitive) comparison must reject the pair — but only on
+	// hosts where the two spellings are genuinely distinct paths; on a
+	// case-insensitive host realpath collapses them and strict passes, which
+	// is exactly why the win32 fix folds case there.
+	const strict = checkFilePathAgainst(join(lower, "CaseProbe.txt"), [extraRoot], { caseInsensitive: false });
+	if (realpathSync(upper) !== realpathSync(lower)) {
+		assert.equal(strict.ok, false);
+	}
 });
