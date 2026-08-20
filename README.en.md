@@ -284,6 +284,19 @@ Notes:
       maxListing: 500        # max entries rendered per directory listing page
 ```
 
+> **Windows note**: the default roots are the DSH home dir and the dsh process working
+> directory (usually the profile dir), while workspace files often live on other drive
+> paths. On rejection the pane shows the current allowed roots; add the workspace directory
+> to `files.roots` (double backslashes or forward slashes in YAML):
+>
+> ```yaml
+> remote:
+>   files:
+>     roots:
+>       - "E:\\CODE"
+>       - "D:/projects"
+> ```
+
 Disable authentication entirely: `enabled: false`.
 
 **Remote file display**: clicking a file path in the DSH web UI fires the `host.openPath`
