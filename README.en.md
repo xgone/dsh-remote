@@ -278,9 +278,23 @@ Notes:
       enabled: true          # master switch for response gzip compression (default on)
       remoteOnly: true       # compress only remote (non-loopback Host) requests; false compresses local too
       minBytes: 1024         # skip compression when a known Content-Length is below this
+    files:
+      enabled: true          # master switch for remote file display via /auth/file (default on)
+      roots: []              # extra allowed read roots (absolute paths)
+      maxListing: 500        # max entries rendered per directory listing page
 ```
 
 Disable authentication entirely: `enabled: false`.
+
+**Remote file display**: clicking a file path in the DSH web UI fires the `host.openPath`
+RPC, which hands the path to the **host** desktop's default application — invisible to a
+remote browser user. This plugin intercepts that RPC for remote (non-loopback) browsers and
+opens `/auth/file?path=…` in a new tab instead: the host streams the file back and the
+browser **displays it inline** (images / PDF / text / video / HTML); unknown binary types
+download; directories render a clickable HTML index. Reads are confined to the DSH home
+directory, the process working directory and any extra `files.roots` (realpath-checked, so
+symlink escapes and `..` traversal are rejected); loopback browsers keep DSH's native
+behavior. `files.enabled: false` turns it off entirely.
 
 **Response gzip compression**: the plugin gzips compressible responses (HTML / CSS / JS /
 JSON / SVG / manifest, etc.) served to **authenticated** clients, noticeably shrinking large

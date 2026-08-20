@@ -238,9 +238,21 @@ dsh plugin --profile web add @xgone/dsh-remote
       enabled: true          # 响应 gzip 压缩总开关（默认开）
       remoteOnly: true       # 仅对远程（非 loopback Host）请求压缩；false 则本地也压
       minBytes: 1024         # 已知 Content-Length 小于此字节数的响应不压缩
+    files:
+      enabled: true          # 远程文件显示（/auth/file）总开关（默认开）
+      roots: []              # 额外允许读取的根目录（绝对路径）
+      maxListing: 500        # 目录索引每页最多渲染的条目数
 ```
 
 关闭认证：`enabled: false`。
+
+**远程文件显示**：DSH 的 Web UI 点击文件路径时走 `host.openPath` RPC，把路径交给**宿主机**桌面
+的默认应用打开——远程浏览器用户完全看不到。本插件在远程（非 loopback）浏览器上拦截该 RPC，改为
+在新标签页打开 `/auth/file?path=…`：文件由宿主机流式返回、在浏览器中**内联显示**（图片 / PDF /
+文本 / 视频 / HTML），未知二进制类型则下载；目录返回一个可点击的 HTML 索引。读取范围被限制在
+DSH 主目录、进程工作目录与 `files.roots` 列出的额外根目录内（realpath 校验，符号链接逃逸与
+`..` 穿越都会被拒绝）；本机（loopback）访问保持 DSH 原生行为不变。`files.enabled: false` 可完全
+关闭。
 
 **响应 gzip 压缩**：插件会为**认证后**的可压缩响应（HTML / CSS / JS / JSON / SVG / manifest 等）自动
 gzip 压缩，显著减小远程访问时大历史会话与大型 bundle 的传输体积；并给带 rev 的哈希静态资源
