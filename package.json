@@ -18,8 +18,8 @@
   ],
   "scripts": {
     "check": "node --check lib/index.js",
-    "test": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js",
-    "prepublishOnly": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js"
+    "test": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js",
+    "prepublishOnly": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js"
   },
   "license": "MIT",
   "author": "xgone <xl.gone@gmail.com>",

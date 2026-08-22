@@ -245,6 +245,12 @@ dsh plugin --profile web add @xgone/dsh-remote
       maxListing: 500        # 目录索引每页最多渲染的条目数
 ```
 
+> **角色门禁只作用于 client-request**：`/api/respond`（浏览器应答宿主的 server-request：审批、提问、
+> 工具结果等）的封包没有 `method` 字段，早期实现会把它们误判为未知方法而拒绝，导致宿主挂起的流式
+> 请求失败、WebSocket 重连、工作区/会话基线被重置。现在仅对 `type: "client-request"` 封包按方法做
+> 角色判定，其余 wire 协议消息一律放行。被拒绝的 client-request 返回符合 RPC 契约的
+> `server-response` 错误封包（回显 rpcId），浏览器按业务错误处理而不是传输故障。
+
 > **Windows 提示**：默认根目录是 DSH 主目录与 dsh 进程工作目录（通常是 profile 目录），工作区文件常在
 > 其他盘符路径下。被拒绝时面板会直接显示当前允许的根目录列表；把工作区所在目录加入 `files.roots`
 > 即可，YAML 中路径写双反斜杠或正斜杠：
