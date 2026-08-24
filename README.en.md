@@ -100,6 +100,11 @@ non-loopback browsers:
 Local (`127.0.0.1` / `localhost`) access keeps DSH's native host-backed path untouched. Both
 directions use the same standard RPC envelope DSH's own UI uses — no host internals are patched.
 
+**Light / dark theme**: every plugin surface (login page, MFA setup, re-auth overlay, settings
+page, remote file panel) takes its colors from DSH's official design tokens (`--dsw-alias-*`),
+so it follows DSH's appearance setting (light / dark / system) automatically — no separate theme
+configuration.
+
 ---
 
 ## 2. Installation
