@@ -257,8 +257,8 @@ dsh plugin --profile web add @xgone/dsh-remote
 > `server-response` 错误封包（回显 rpcId），浏览器按业务错误处理而不是传输故障。
 
 > **Windows 提示**：默认根目录是 DSH 主目录与 dsh 进程工作目录（通常是 profile 目录），工作区文件常在
-> 其他盘符路径下。被拒绝时面板会直接显示当前允许的根目录列表；把工作区所在目录加入 `files.roots`
-> 即可，YAML 中路径写双反斜杠或正斜杠：
+> 其他盘符路径下。被拒绝时面板会直接显示当前允许的根目录列表；把工作区所在目录加入 **设置页「允许的目录」**
+> （推荐，即时生效）或在配置 `files.roots` 中列出即可，YAML 中路径写双反斜杠或正斜杠：
 >
 > ```yaml
 > remote:
@@ -280,9 +280,16 @@ dsh plugin --profile web add @xgone/dsh-remote
 - 不可预览的二进制提供下载与新标签页兜底
 
 DSH 原生的右侧 details 列（会话详情，单槽位）不受影响，本侧栏以覆盖层形式与其并存。读取范围被限制在
-DSH 主目录、进程工作目录与 `files.roots` 列出的额外根目录内（realpath 校验，符号链接逃逸与
-`..` 穿越都会被拒绝）；本机（loopback）访问保持 DSH 原生行为不变。`files.enabled: false` 可完全
-关闭。
+DSH 主目录、进程工作目录、`files.roots` 列出的额外根目录，以及**在设置页「允许的目录」中添加的目录**内
+（realpath 校验，符号链接逃逸与 `..` 穿越都会被拒绝）；本机（loopback）访问保持 DSH 原生行为不变。
+`files.enabled: false` 可完全关闭。
+
+> **允许的目录（建议用设置页，而非改配置文件）**：管理员在 Settings → 登录与账号 → 允许的目录 中即可
+> 添加/移除允许读取的目录，**即时生效、无需重启**。用户添加的目录持久化在
+> `$DSH_HOME/dsh-remote-files.json`（0600，原子写入），并与配置里的 `files.roots` **叠加**生成为
+> 生效根目录；配置里的 `files.roots` 仍然有效（只读展示，不可在设置页删除）。面板被拒绝时显示的
+> `allowedRoots` 提示会指向「允许的目录」设置页。
+
 
 **响应 gzip 压缩**：插件会为**认证后**的可压缩响应（HTML / CSS / JS / JSON / SVG / manifest 等）自动
 gzip 压缩，显著减小远程访问时大历史会话与大型 bundle 的传输体积；并给带 rev 的哈希静态资源

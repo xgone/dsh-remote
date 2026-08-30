@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync, realpathSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkFilePathAgainst } from "../lib/index.js";
+import { FilesRootsStore } from "../lib/files-store.js";
 
 const root = mkdtempSync(join(tmpdir(), "dsh-remote-file-"));
 const outside = mkdtempSync(join(tmpdir(), "dsh-remote-outside-"));
@@ -75,4 +76,29 @@ test("checkFilePathAgainst: case-insensitive comparison (Windows-style) matches 
 	if (realpathSync(upper) !== realpathSync(lower)) {
 		assert.equal(strict.ok, false);
 	}
+});
+
+test("effective roots: a runtime FilesRootsStore.add() root actually grants access (config + user roots threaded)", () => {
+	// Mirrors how handleFile composes the effective roots per request:
+	//   effectiveExtraRoots() = [...cfg.files.roots, ...filesRoots.list()]
+	const storeRoot = mkdtempSync(join(tmpdir(), "dsh-remote-user-root-"));
+	writeFileSync(join(storeRoot, "doc.txt"), "hi");
+	const store = new FilesRootsStore(join(mkdtempSync(join(tmpdir(), "dsh-remote-store-")), "files.json"));
+	store.load();
+	store.add(storeRoot); // user adds the dir via the settings UI
+
+	const configRoots = []; // cfg.files.roots (empty here)
+	const effective = [...configRoots, ...store.list()];
+
+	// The file under the user-added root is now allowed.
+	assert.equal(checkFilePathAgainst(join(storeRoot, "doc.txt"), effective).ok, true);
+	// A path outside every root is still rejected, and names the user root so the
+	// error is self-diagnosing.
+	const outside = mkdtempSync(join(tmpdir(), "dsh-remote-outside2-"));
+	writeFileSync(join(outside, "secret.txt"), "x");
+	const verdict = checkFilePathAgainst(join(outside, "secret.txt"), effective);
+	assert.equal(verdict.ok, false);
+	assert.equal(verdict.reason, "outside-roots");
+	rmSync(storeRoot, { recursive: true, force: true });
+	rmSync(outside, { recursive: true, force: true });
 });

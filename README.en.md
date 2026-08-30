@@ -293,7 +293,8 @@ Notes:
 > **Windows note**: the default roots are the DSH home dir and the dsh process working
 > directory (usually the profile dir), while workspace files often live on other drive
 > paths. On rejection the pane shows the current allowed roots; add the workspace directory
-> to `files.roots` (double backslashes or forward slashes in YAML):
+> under **Settings > Allowed directories** (recommended, applied immediately) or list it in
+> `files.roots` (double backslashes or forward slashes in YAML):
 >
 > ```yaml
 > remote:
@@ -320,9 +321,19 @@ Desktop-style):
 
 DSH's native right "details" column (session details, single slot) is untouched — this
 sidebar coexists with it as an overlay. Reads are confined to the DSH home
-directory, the process working directory and any extra `files.roots` (realpath-checked, so
+directory, the process working directory, any extra `files.roots`, and the directories
+added under Settings > Allowed directories (realpath-checked, so
 symlink escapes and `..` traversal are rejected); loopback browsers keep DSH's native
 behavior. `files.enabled: false` turns it off entirely.
+
+> **Allowed directories (use the settings page, not a config edit)**: an admin can add /
+> remove read roots from Settings > Auth & Accounts > Allowed directories — **applied
+> immediately, no restart**. User-added roots persist in `$DSH_HOME/dsh-remote-files.json`
+> (0600, written atomically) and **layer on top of** the config `files.roots` to form the
+> effective roots; config-provided roots stay valid (shown read-only, not removable from the
+> settings page). The `allowedRoots` hint shown on a rejected panel now points at the
+> «Allowed directories» settings page.
+
 
 **Response gzip compression**: the plugin gzips compressible responses (HTML / CSS / JS /
 JSON / SVG / manifest, etc.) served to **authenticated** clients, noticeably shrinking large
