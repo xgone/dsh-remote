@@ -74,6 +74,28 @@ external browser can sign in and use the full feature set (including workspace s
 - Settings → Auth & Accounts: MFA self-service (enable/disable), account list (card style), reset
   password, log out button.
 
+**Mobile / touch polish** (DSH is desktop-first; this plugin fills the gaps on narrow viewports):
+
+- **Enter no longer misfires send**: on coarse-pointer (touch) devices the chat composer's
+  **Enter** inserts a newline instead of sending — the keyboard's return key is easy to hit
+  accidentally on phones. Sending goes through the send button (or a hardware keyboard's
+  modifier+Enter).
+- **Narrow-layout injection** (≤767px): DSH's session header crams the breadcrumb title, action
+  buttons and the utility pill (mode / session log) into one row where they collide, and the view
+  tabs can be clipped. The plugin injects a narrow-viewport stylesheet that lets the title row
+  **wrap** and the view tabs **scroll horizontally**, and keeps the composer tool row wrapping so
+  the model pill truncates instead of pushing the send button off-screen.
+- **Remote file panel**: the fixed 460px right-hand panel overflowed phone screens; it now fits
+  the viewport (drag-resizable) instead of spilling past the edge.
+- **Login / re-login overlay**: on small screens the inset shrinks and the card is height-capped
+  and **scrolls internally**, so the fields stay reachable after the on-screen keyboard opens.
+
+**AbortSignal compatibility**: DSH's client merges the RPC timeout with the caller's abort signal
+via `AbortSignal.any([AbortSignal.timeout(ms), signal])`; Apple-device Chrome (really WKWebView) and
+Safari < 17.4 lack `AbortSignal.any`, so **every message send threw
+"AbortSignal.any is not a function"** and failed. The plugin installs a spec-compatible
+`AbortSignal.any` (plus a `.timeout` fallback) at client module load — no DSH source touched.
+
 ### 1.5 Localization (`zh` / `en`)
 
 Every plugin surface — the login page, MFA binding guide, re-login overlay, and the Settings →
@@ -464,6 +486,12 @@ built-in zh/en `t()` table selected by `document.documentElement.lang`.
 - **Settings → Auth & Accounts** (`settings.section` slot with a user icon; CSS hides the shell's
   default gear): status, MFA self-service, account card list (reset password / disable MFA /
   remove), log out;
+- **Mobile / touch UX** (see above): touch Enter=newline to avoid misfiring send, narrow-viewport
+  header/composer style injection, full-width draggable remote file panel, scrollable login/re-login
+  overlay on small screens;
+- **AbortSignal polyfill**: installs `AbortSignal.any` / `.timeout` at module load to fix the
+  "AbortSignal.any is not a function" message-send failure on Apple-device Chrome (WKWebView) / older
+  Safari;
 - All data goes through `fetch("/auth/*")` (same-origin cookies), independent of the settings
   domain (third-party code cannot register there).
 
