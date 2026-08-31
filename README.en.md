@@ -286,23 +286,15 @@ Notes:
       minBytes: 1024         # skip compression when a known Content-Length is below this
     files:
       enabled: true          # master switch for remote file display via /auth/file (default on)
-      roots: []              # extra allowed read roots (absolute paths)
       maxListing: 500        # max entries rendered per directory listing page
 ```
 
-> **Windows note**: the default roots are the DSH home dir and the dsh process working
-> directory (usually the profile dir), while workspace files often live on other drive
-> paths. On rejection the pane shows the current allowed roots; add the workspace directory
-> under **Settings > Allowed directories** (recommended, applied immediately) or list it in
-> `files.roots` (double backslashes or forward slashes in YAML):
->
-> ```yaml
-> remote:
->   files:
->     roots:
->       - "E:\\CODE"
->       - "D:/projects"
-> ```
+> **Windows note**: the directories readable by default are the DSH home dir and the dsh
+> process working directory (usually the profile dir), while workspace files often live on
+> other drive paths. When the pane reports `outside-roots`, sign in as an admin, open
+> **Settings > Auth & Accounts > Allowed directories**, and add the workspace directory
+> there (e.g. `E:\CODE`; both `E:/CODE` and `E:\\CODE` spellings are accepted in the input)
+> — **applied immediately, no config edit, no restart**.
 
 Disable authentication entirely: `enabled: false`.
 
@@ -320,19 +312,26 @@ Desktop-style):
 - non-previewable binaries fall back to download / open-in-new-tab
 
 DSH's native right "details" column (session details, single slot) is untouched — this
-sidebar coexists with it as an overlay. Reads are confined to the DSH home
-directory, the process working directory, any extra `files.roots`, and the directories
-added under Settings > Allowed directories (realpath-checked, so
-symlink escapes and `..` traversal are rejected); loopback browsers keep DSH's native
+sidebar coexists with it as an overlay. **Which files can be viewed by default?** Only
+files inside the DSH home directory and the dsh process working directory; anything else
+makes the pane report `cannot display file (outside-roots)`. Every read is realpath-checked,
+so symlink escapes and `..` traversal are rejected; loopback browsers keep DSH's native
 behavior. `files.enabled: false` turns it off entirely.
 
-> **Allowed directories (use the settings page, not a config edit)**: an admin can add /
-> remove read roots from Settings > Auth & Accounts > Allowed directories — **applied
-> immediately, no restart**. User-added roots persist in `$DSH_HOME/dsh-remote-files.json`
-> (0600, written atomically) and **layer on top of** the config `files.roots` to form the
-> effective roots; config-provided roots stay valid (shown read-only, not removable from the
-> settings page). The `allowedRoots` hint shown on a rejected panel now points at the
-> «Allowed directories» settings page.
+> **How to allow other directories (done on the settings page — no config edit)**
+>
+> 1. Sign in as an **admin** and open **Settings > Auth & Accounts > Allowed directories**;
+> 2. click **Pick directory** to choose a folder on the host, or paste an absolute path into
+>    the input, then click **Add**;
+> 3. the change **applies immediately, no restart** — click the file path in the session
+>    again and it now renders;
+> 4. when it is no longer needed, click **Remove** on that entry to revoke access.
+>
+> Added directories persist in `$DSH_HOME/dsh-remote-files.json` (0600, written atomically)
+> and survive restarts; config-provided roots are listed read-only alongside and are not
+> managed from the page. The legacy `files.roots` config option still works (also shown
+> read-only), but **new directories should be added through the settings page**. The
+> `allowedRoots` hint shown on a rejected panel points straight at this settings page.
 
 
 **Response gzip compression**: the plugin gzips compressible responses (HTML / CSS / JS /

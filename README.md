@@ -246,7 +246,6 @@ dsh plugin --profile web add @xgone/dsh-remote
       minBytes: 1024         # 已知 Content-Length 小于此字节数的响应不压缩
     files:
       enabled: true          # 远程文件显示（/auth/file）总开关（默认开）
-      roots: []              # 额外允许读取的根目录（绝对路径）
       maxListing: 500        # 目录索引每页最多渲染的条目数
 ```
 
@@ -256,17 +255,10 @@ dsh plugin --profile web add @xgone/dsh-remote
 > 角色判定，其余 wire 协议消息一律放行。被拒绝的 client-request 返回符合 RPC 契约的
 > `server-response` 错误封包（回显 rpcId），浏览器按业务错误处理而不是传输故障。
 
-> **Windows 提示**：默认根目录是 DSH 主目录与 dsh 进程工作目录（通常是 profile 目录），工作区文件常在
-> 其他盘符路径下。被拒绝时面板会直接显示当前允许的根目录列表；把工作区所在目录加入 **设置页「允许的目录」**
-> （推荐，即时生效）或在配置 `files.roots` 中列出即可，YAML 中路径写双反斜杠或正斜杠：
->
-> ```yaml
-> remote:
->   files:
->     roots:
->       - "E:\\CODE"
->       - "D:/projects"
-> ```
+> **Windows 提示**：默认允许读取的目录是 DSH 主目录与 dsh 进程工作目录（通常是 profile 目录），而工作区
+> 文件常在其他盘符路径下。当面板提示 `outside-roots` 时，用管理员账号打开 **Settings → 登录与账号 →
+> 允许的目录**，把工作区所在目录添加进去即可（如 `E:\CODE`；输入框里正斜杠 `E:/CODE` 或双反斜杠
+> `E:\\CODE` 两种写法都支持），**即时生效，无需改配置文件、无需重启**。
 
 关闭认证：`enabled: false`。
 
@@ -279,17 +271,21 @@ dsh plugin --profile web add @xgone/dsh-remote
 - 面板头部显示文件名与完整路径；侧栏左缘可拖拽调整宽度；Esc 关闭最上方 / 放大的面板
 - 不可预览的二进制提供下载与新标签页兜底
 
-DSH 原生的右侧 details 列（会话详情，单槽位）不受影响，本侧栏以覆盖层形式与其并存。读取范围被限制在
-DSH 主目录、进程工作目录、`files.roots` 列出的额外根目录，以及**在设置页「允许的目录」中添加的目录**内
-（realpath 校验，符号链接逃逸与 `..` 穿越都会被拒绝）；本机（loopback）访问保持 DSH 原生行为不变。
-`files.enabled: false` 可完全关闭。
+DSH 原生的右侧 details 列（会话详情，单槽位）不受影响，本侧栏以覆盖层形式与其并存。**默认能看哪些文件？**
+只有 DSH 主目录与 dsh 进程工作目录内的文件；范围外的路径面板会提示
+`cannot display file (outside-roots)`。所有读取都做 realpath 校验，符号链接逃逸与 `..` 穿越一律拒绝；
+本机（loopback）访问保持 DSH 原生行为不变。`files.enabled: false` 可完全关闭。
 
-> **允许的目录（建议用设置页，而非改配置文件）**：管理员在 Settings → 登录与账号 → 允许的目录 中即可
-> 添加/移除允许读取的目录，**即时生效、无需重启**。用户添加的目录持久化在
-> `$DSH_HOME/dsh-remote-files.json`（0600，原子写入），并与配置里的 `files.roots` **叠加**生成为
-> 生效根目录；配置里的 `files.roots` 仍然有效（只读展示，不可在设置页删除）。面板被拒绝时显示的
-> `allowedRoots` 提示会指向「允许的目录」设置页。
-
+> **如何允许查看其他目录的文件（在设置页操作，不需要改配置文件）**
+>
+> 1. 用**管理员**账号登录，打开 **Settings → 登录与账号 → 允许的目录**；
+> 2. 点「**选择目录**」在宿主机上直接挑一个目录，或在输入框里粘贴绝对路径，再点「**添加**」；
+> 3. 添加**立即生效，无需重启**——回到会话里重新点一下刚才的文件路径即可正常显示；
+> 4. 不再需要时，点该目录条目右侧的「删除」即可收回访问权限。
+>
+> 添加的目录保存在 `$DSH_HOME/dsh-remote-files.json`（0600，原子写入），重启后依然有效；「配置文件提供的
+> 根目录」会以只读形式一并列出，但不受设置页管理。旧配置项 `files.roots` 仍然兼容生效（同样只读展示），
+> **新增目录请一律使用设置页**。面板被拒绝时显示的 `allowedRoots` 提示，会直接指向这个设置页。
 
 **响应 gzip 压缩**：插件会为**认证后**的可压缩响应（HTML / CSS / JS / JSON / SVG / manifest 等）自动
 gzip 压缩，显著减小远程访问时大历史会话与大型 bundle 的传输体积；并给带 rev 的哈希静态资源
