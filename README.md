@@ -373,7 +373,11 @@ index.html 都要校验。这个 Cookie 只能由 dsh 自己的 `?token=<启动�
   失效时在**当前响应**上补发——升级前创建的旧会话、被浏览器清理过 Cookie 的会话，下一次请求即自动
   修复，无需重新登录；
 - **旧版 dsh 兼容**：读不到 `client-connection/browser-session` 凭证记录（或运行时没有
-  `credentials` 服务）时，铸造逻辑自动关闭，行为与 0.3.0 完全一致。
+  `credentials` 服务）时，铸造逻辑自动关闭，行为与 0.3.0 完全一致；
+- **浏览器半区 RPC 自适应**：alpha 起 RPC endpoint 改名 `namespace/method`（斜杠）且信封收窄为
+  单一 `args` 字段（`settings.describe` → `settings/describe`）。客户端调用先试新形状、404 时回落
+  旧点号形状并按页面缓存，同一份 bundle 同时服务 rc 与 alpha；服务端角色门禁也把斜杠方法名归一化
+  后再匹配点号拒绝表，非管理员限制在两代 dsh 上同样生效。
 
 配置项（通常无需改动）：
 

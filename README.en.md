@@ -433,7 +433,13 @@ This plugin adapts (on by default, zero configuration):
   the next request without re-login;
 - **Old-dsh compatibility**: when the `client-connection/browser-session` credential record is
   absent (or the runtime has no `credentials` service), minting stays off and behavior is
-  identical to 0.3.0.
+  identical to 0.3.0;
+- **Browser-half RPC shape adaptation**: alpha renamed RPC endpoints to `namespace/method`
+  (slash) with a single `args` envelope field (`settings.describe` → `settings/describe`). The
+  client tries the new shape first, falls back to the dotted spelling on 404, and pins whichever
+  worked for the page — one bundle serves both rc and alpha; the host-half role gate likewise
+  normalizes slash method names before matching the dotted deny lists, so non-admin limits hold
+  on both generations.
 
 Configuration (rarely needed):
 

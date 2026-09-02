@@ -51,6 +51,19 @@ test("evaluateRoleGate: session.prompt is denied for guest but allowed for user"
 	assert.equal(evaluateRoleGate("/api/session.prompt", "POST", clientRequest("session.prompt"), "user").allowed, true);
 });
 
+test("evaluateRoleGate: dsh alpha slash endpoint names hit the dotted deny lists", () => {
+	// dsh ≥ 0.1.2-alpha names RPC endpoints `namespace/method` on the wire;
+	// the deny lists are dotted rc-era names, so the gate normalizes the
+	// separators before matching — otherwise role gating silently stops
+	// binding on alpha builds.
+	assert.equal(evaluateRoleGate("/api/host/pickDirectory", "POST", clientRequest("host/pickDirectory"), "user").allowed, false);
+	assert.equal(evaluateRoleGate("/api/settings/describe", "POST", clientRequest("settings/describe"), "user").allowed, false);
+	assert.equal(evaluateRoleGate("/api/session/prompt", "POST", clientRequest("session/prompt"), "guest").allowed, false);
+	// non-deny methods still pass under both spellings. (Admins never reach
+	// this pure function — wrapHttp skips it for the admin role.)
+	assert.equal(evaluateRoleGate("/api/workspace/list", "POST", clientRequest("workspace/list"), "guest").allowed, true);
+});
+
 test("evaluateRoleGate: workspace.list is allowed for every role", () => {
 	for (const role of ["admin", "user", "guest"]) {
 		assert.equal(evaluateRoleGate("/api/workspace.list", "POST", clientRequest("workspace.list"), role).allowed, true, role);
