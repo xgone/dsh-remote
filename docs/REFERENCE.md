@@ -155,13 +155,18 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
   状态、MFA 自服务（开启/关闭）、账号卡片列表（重置密码 / 禁用 MFA / 删除）、允许的目录管理、
   退出登录。所有数据走 `fetch("/auth/*")`（同源 Cookie），不依赖 settings 域（第三方代码无法
   在该域注册）。
-- **远程文件侧栏**：拦截远程（非 loopback，按 `location.hostname` 判定）浏览器的
-  `host.openPath` RPC（含 `type: "server-response"` 的合规假响应），改为流式加载
-  `/auth/file` 面板：Markdown 用界面同款渲染器、图片 / PDF / 视频内联、文本等宽、目录逐级浏览；
-  多面板上下等分、面板最大化 / 关闭、侧栏左缘拖拽调宽、Esc 关闭最上 / 放大面板；不可预览的
-  二进制提供下载兜底。文件读取做 realpath 校验，符号链接逃逸与 `..` 穿越一律拒绝；
-  范围外路径报 `outside-roots`（提示含 `allowedRoots`，指向设置页）。loopback 访问不拦截，
-  保持 DSH 原生行为。
+- **远程文件侧栏**：拦截远程（非 loopback，按 `location.hostname` 判定）浏览器的原生打开
+  RPC（含 `type: "server-response"` 的合规假响应），改为流式加载 `/auth/file` 面板：Markdown
+  用界面同款渲染器、图片 / PDF / 视频内联、文本等宽、目录逐级浏览；多面板上下等分、面板最大化 /
+  关闭、侧栏左缘拖拽调宽、Esc 关闭最上 / 放大面板；不可预览的二进制提供下载兜底。文件读取做
+  realpath 校验，符号链接逃逸与 `..` 穿越一律拒绝；范围外路径报 `outside-roots`（提示含
+  `allowedRoots`，指向设置页）。loopback 访问不拦截，保持 DSH 原生行为。
+  两代 dsh 的端点形状不同，拦截器同时匹配：rc 为 `/api/host.openPath`（`payload.path`），
+  dsh ≥ 0.1.2-alpha 为 `/api/session/openWorkspacePath`（`payload.args.<参数名>.path`，
+  按参数名泛化查找）。alpha 还把打开入口的渲染钉在 `ctx.remote.$host.isLoopback` 上
+  （`canOpenPath = isLoopback && hostCanOpenPath`），插件因此在远程页面把 `ctx.connection`
+  的 `isLoopback` 事实翻转为真——客户端半区的 `trustProxy`：门禁层已放行认证请求，服务端
+  角色门禁仍是执行点（`session.openWorkspacePath` 等原生打开方法对非 admin 拒绝）。
 - **主题**：全部界面用官方设计令牌 `--dsw-alias-*` 取色，自动跟随 DSH 浅色 / 深色 / 跟随系统。
 - **语言**：接入官方 `@deepseek-ai/dsh-client-locale`（`ctx.locale`），注册 zh/en 字典实时切换。
 
