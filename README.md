@@ -183,6 +183,7 @@ dsh plugin --profile web remove @xgone/dsh-remote
 | 远程访问时「设置 → 插件」配置页空白 | v0.1.5+ 已内置修复：DSH 对远程浏览器把所有设置 scope 切成 memory 模式（读写在客户端被丢弃），插件启动时自动解除该限制并触发一次全量刷新，配置卡片远程可读可写；原始 settings.yaml 文档编辑器仍保持仅限本机（设计如此） |
 | 远程刷新后反复弹出「内测声明」 | v0.1.6+ 已内置修复（已确认用户）：DSH 的欢迎弹窗确认态 `WelcomeNoticeStore` 对远程走 memory 模式，不读已持久化的确认；插件用官方 `settings.describe` RPC 读 `ui-onboarding.welcomeNoticeVersion`，有值时经官方 `store.update` 置 `acknowledged=true`，`WelcomeNotice` 即自动收场不再弹。全程只用官方 slots/store/RPC，不重写 DSH 内部方法、不改 persistence。纯远程首次用户（从无确认）维持原行为 |
 | 远程打开「设置 → 模型」提示"加载提供方目录失败: settings are unavailable in this browser" | v0.2.6+ 已内置修复：DSH 升级后所有设置读取改经共享的 `SettingsDescribeMirror`（远程构造为 memory 模式，`view` 恒为 undefined），Models 页因此抛错；插件用官方 `settings.describe` RPC 读取设置文档，经官方 `ctx.settingsScope.describe()` 拿到 mirror，再用官方 `store.set` 注入 `view`，Models 目录远程正常加载。全程只用官方 RPC/服务/store API，不重写 DSH 方法、不改 persistence |
+| 升级到 dsh 0.1.2-alpha+ 后，远程登录成功但所有 `/api` 返回 401（index.html 也可能 401） | v0.3.1+ 已内置修复（issue #10）：新版 dsh 的 `client-connection` 额外要求绑定请求 Host 的 `dsh-auth-*` 持久化签名 Cookie，远程浏览器拿不到也无法自行铸造；插件现在在登录时用核心同款算法铸造并下发（绑定归一化 loopback 与原始公网 Host 各一枚），并在门禁层自愈补发——**升级插件后重新登录一次即可**，升级前创建的旧会话会在下一次请求时自动修复 |
 
 ### 9. 无浏览器服务器（headless / Linux）安装
 
@@ -247,6 +248,9 @@ dsh plugin --profile web add @xgone/dsh-remote
     files:
       enabled: true          # 远程文件显示（/auth/file）总开关（默认开）
       maxListing: 500        # 目录索引每页最多渲染的条目数
+    browserAuth:
+      enabled: true          # dsh ≥ 0.1.2-alpha 的 dsh-auth-* Cookie 铸造（默认开，见「3.1」）
+      cookieTtlSeconds: 0    # 0 = 跟随 session.ttlSeconds；上限为 client-connection.cookieMaxAgeDays
 ```
 
 > **角色门禁只作用于 client-request**：`/api/respond`（浏览器应答宿主的 server-request：审批、提问、
@@ -350,6 +354,39 @@ DSH 内置的浏览器信任围栏（`dsh-client-connection`）校验 `Host`（l
 `Host`/`Origin` 归一化为 `127.0.0.1:<端口>`（保留原 scheme）再交给下层——围栏判定为 loopback，
 特权方法对外部浏览器放行。未认证请求仍被门禁 403，围栏的 DNS-rebinding 语义在 Cookie 之后不再
 需要。
+
+### 3.1 新版 dsh 适配：`dsh-auth-*` 会话 Cookie 铸造（≥ 0.1.2-alpha，issue #10）
+
+从 dsh `0.1.2-alpha` 起，`client-connection` 在围栏之外还要求一个**绑定请求 Host** 的持久化签名
+Cookie（`dsh-auth-<sha256(Host)>`，HMAC-SHA256，密钥保存在 `$DSH_HOME/.credentials.yaml` 的
+`client-connection/browser-session` 记录里）：`/api`、流式 WebSocket（`/api/remote.mux`）与
+index.html 都要校验。这个 Cookie 只能由 dsh 自己的 `?token=<启动令牌>` 流程铸造，而远程浏览器
+既拿不到启动令牌，也永远不可能持有绑定 `127.0.0.1:<端口>` 的 Cookie——登录后所有 `/api` 全部
+401。
+
+本插件的适配（默认开启，无需配置）：
+
+- **登录 / MFA / 引导成功时**，插件读取 client-connection 的持久化签名密钥，用与核心完全相同的
+  算法铸造并下发两个 `dsh-auth-*` Cookie：一个绑定**归一化后的 loopback authority**（供 `/api`
+  与 WebSocket 使用），一个绑定**原始公网 Host**（供 index.html / 静态回退路径使用）；
+- **自愈补发**：每个经过门禁的请求都会校验 Cookie 是否在位且有效（包括核心自己铸造的），缺失或
+  失效时在**当前响应**上补发——升级前创建的旧会话、被浏览器清理过 Cookie 的会话，下一次请求即自动
+  修复，无需重新登录；
+- **旧版 dsh 兼容**：读不到 `client-connection/browser-session` 凭证记录（或运行时没有
+  `credentials` 服务）时，铸造逻辑自动关闭，行为与 0.3.0 完全一致。
+
+配置项（通常无需改动）：
+
+```yaml
+browserAuth:
+  enabled: true          # 铸造总开关
+  cookieTtlSeconds: 0    # 0 = 跟随 session.ttlSeconds（默认 7 天）
+```
+
+> Cookie 有效窗口不能超过 `client-connection` 的 `cookieMaxAgeDays`（默认 30 天），插件已自动
+> 收敛到该上限；若你调低了部署里的 `cookieMaxAgeDays`，请把 `cookieTtlSeconds` 一并调低。
+> `trustProxy: false` 且在 dsh 侧配置了 `--trusted-host <域名>` 的部署同样被覆盖：此时插件只铸造
+> 绑定原始公网 Host 的那枚 Cookie，围栏由 `trustedHosts` 放行。
 
 ### 4. 存储（`lib/store.js`）
 
