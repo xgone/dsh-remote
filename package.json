@@ -18,8 +18,8 @@
   ],
   "scripts": {
     "check": "node --check lib/index.js && node --check lib/client.js",
-    "test": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js",
-    "prepublishOnly": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js"
+    "test": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js test/docx-extract.test.js test/file-kind.test.js",
+    "prepublishOnly": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js test/docx-extract.test.js test/file-kind.test.js"
   },
   "license": "MIT",
   "author": "xgone <xl.gone@gmail.com>",

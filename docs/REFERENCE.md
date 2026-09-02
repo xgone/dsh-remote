@@ -156,11 +156,15 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
   退出登录。所有数据走 `fetch("/auth/*")`（同源 Cookie），不依赖 settings 域（第三方代码无法
   在该域注册）。
 - **远程文件侧栏**：拦截远程（非 loopback，按 `location.hostname` 判定）浏览器的原生打开
-  RPC（含 `type: "server-response"` 的合规假响应），改为流式加载 `/auth/file` 面板：Markdown
-  用界面同款渲染器、图片 / PDF / 视频内联、文本等宽、目录逐级浏览；多面板上下等分、面板最大化 /
-  关闭、侧栏左缘拖拽调宽、Esc 关闭最上 / 放大面板；不可预览的二进制提供下载兜底。文件读取做
-  realpath 校验，符号链接逃逸与 `..` 穿越一律拒绝；范围外路径报 `outside-roots`（提示含
-  `allowedRoots`，指向设置页）。loopback 访问不拦截，保持 DSH 原生行为。
+  RPC（含 `type: "server-response"` 的合规假响应），改为流式加载 `/auth/file` 面板，按文件
+  类型选择渲染策略：Markdown 用界面同款渲染器；代码 / JSON / YAML 等用 shell 自带的
+  `CodeBlock`（shiki 高亮 + 复制按钮 + 懒加载语法，语言提示与 read 卡片同表，未知语言回落
+  纯等宽）；纯文本等宽换行；图片内联；PDF 内嵌；视频 / 音频内联；`.docx` 走服务端纯文本提取
+  （见 `/auth/file` 的 `format=text`）；其余类型（压缩包 / 旧版 Office / 未知二进制）点击时
+  不打开面板、直接触发浏览器下载（面板内的下载卡片仅作兜底）。超长文本 / 代码在 40 万字符
+  处截断并提示；多面板上下等分、面板最大化 / 关闭、侧栏左缘拖拽调宽、Esc 关闭最上 / 放大面板。
+  文件读取做 realpath 校验，符号链接逃逸与 `..` 穿越一律拒绝；范围外路径报 `outside-roots`
+  （提示含 `allowedRoots`，指向设置页）。loopback 访问不拦截，保持 DSH 原生行为。
   两代 dsh 的端点形状不同，拦截器同时匹配：rc 为 `/api/host.openPath`（`payload.path`），
   dsh ≥ 0.1.2-alpha 为 `/api/session/openWorkspacePath`（`payload.args.<参数名>.path`，
   按参数名泛化查找）。alpha 还把打开入口的渲染钉在 `ctx.remote.$host.isLoopback` 上
@@ -256,7 +260,7 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 | POST | `/auth/mfa/verify` | 用动态码确认 pending 设置 |
 | POST | `/auth/mfa/disable` | 关闭本账号 MFA（需密码 + 有效动态码/备用码） |
 | POST | `/auth/accounts` | 管理员：`{action: list\|upsert\|remove\|disable-mfa, ...}` |
-| GET | `/auth/file` | 远程文件面板的流式文件读取（受允许目录白名单约束） |
+| GET | `/auth/file` | 远程文件面板的流式文件读取（受允许目录白名单约束）；`format=json` 供面板的目录浏览；`format=text` + `.docx` 返回服务端提取的纯文本（ZIP 解析 + zlib 解压 + XML 剥离，≤64MB 源 / 2MB 文本，结构异常返回 415 让面板回落下载卡片） |
 
 ## 15. 已处理的 DSH 远程浏览器怪癖（settings memory 模式系列）
 

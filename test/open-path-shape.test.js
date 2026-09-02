@@ -28,7 +28,8 @@ function loadClientBundle() {
 		if (name === "react/jsx-runtime") return { jsx: () => null };
 		if (name === "react-dom/client") return { createRoot: () => ({ render: () => {}, unmount: () => {} }) };
 		if (name === "@deepseek-ai/dsh-client-ui-primitives") throw new Error("primitives are optional");
-		return {}; // react and every other shell module
+		if (name === "react") return { Component: class Component {} }; // PaneErrorBoundary extends it at factory time
+		return {}; // every other shell module
 	};
 	const pageWindow = { __ModuleLoader__: { load: (definition) => loaded.push(definition) } };
 	new Function("window", source)(pageWindow);
@@ -151,4 +152,60 @@ test("installRemoteFileOpen: intercepted native-open returns a compliant server-
 	// Anything else passes through untouched.
 	await patchedFetch("/api/settings.describe", { method: "POST", body: "{}" });
 	assert.deepEqual(reached, ["/api/settings.describe"]);
+});
+
+test("installRemoteFileOpen: un-previewable kinds download directly instead of opening the panel", async () => {
+	const clicks = [];
+	const anchorStub = {
+		href: "",
+		download: "",
+		click: () => clicks.push(anchorStub.href),
+		remove: () => {}
+	};
+	// The bundle's downloadFile reaches `document` as the page global.
+	const previousDocument = globalThis.document;
+	globalThis.document = {
+		createElement: () => anchorStub,
+		body: { appendChild: () => {}, removeChild: () => {} }
+	};
+	try {
+		// install() is idempotent — the wrapper from the previous test is
+		// still on pageWindow.fetch; drive that one.
+		bundle.installRemoteFileOpen();
+		const patchedFetch = pageWindow.fetch;
+
+		// A binary kind (.zip) must NOT open a pane — it downloads via the
+		// anchor and still answers the RPC with the compliant ok envelope.
+		const zipBody = JSON.stringify({
+			type: "client-request", rpcId: "dl-1", method: "session/openWorkspacePath",
+			payload: { args: { request: { path: "/home/you/archive.zip" } } }
+		});
+		const zipResponse = await patchedFetch("/api/session/openWorkspacePath", { method: "POST", body: zipBody });
+		assert.deepEqual(await zipResponse.json(), {
+			type: "server-response", rpcId: "dl-1",
+			result: { ok: true, value: { opened: true } }
+		});
+		assert.deepEqual(clicks, ["/auth/file?path=" + encodeURIComponent("/home/you/archive.zip")], "binary click must trigger the download anchor");
+
+		// A previewable kind keeps the panel path — no download anchor.
+		const mdBody = JSON.stringify({
+			type: "client-request", rpcId: "dl-2", method: "session/openWorkspacePath",
+			payload: { args: { request: { path: "/home/you/notes.md" } } }
+		});
+		const mdResponse = await patchedFetch("/api/session/openWorkspacePath", { method: "POST", body: mdBody });
+		assert.equal((await mdResponse.json()).result.ok, true);
+		assert.equal(clicks.length, 1, "previewable click must not download");
+
+		// The docx kind is previewable (extracted text) — also no download.
+		const docxBody = JSON.stringify({
+			type: "client-request", rpcId: "dl-3", method: "host.openPath",
+			payload: { path: "/home/you/报告.docx" }
+		});
+		const docxResponse = await patchedFetch("https://host/api/host.openPath", { method: "POST", body: docxBody });
+		assert.equal((await docxResponse.json()).result.ok, true);
+		assert.equal(clicks.length, 1, "docx click must not download");
+	} finally {
+		if (previousDocument === undefined) delete globalThis.document;
+		else globalThis.document = previousDocument;
+	}
 });

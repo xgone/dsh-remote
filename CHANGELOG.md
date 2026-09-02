@@ -18,6 +18,28 @@
   非 admin 的 settings 写入依旧拒绝）；角色门禁拒绝表补齐 alpha 新名（`session.openWorkspacePath`、
   `settings.openSettingsDocument`、`settings.openAgentPresetDirectory`），非 admin 依旧无法
   触发宿主机桌面打开。
+- **文件面板按类型渲染**：不再一视同仁地按纯文本/Markdown 展示，改为按扩展名选择策略——
+  - 代码 / 配置（ts/js/py/go/rs/java/c/cpp/c#/swift/sh/yaml/toml/html/css 等）：改用 shell 自带的
+    `CodeBlock`——shiki 语法高亮、复制按钮、懒加载语法、跟随明暗主题，语言提示与 DSH read 卡片
+    同一映射，未知语言回落纯等宽（缺 primitives 包时同样回落）；
+  - Markdown（.md/.markdown/.mdx）：保持现有渲染样式不变；
+  - JSON：格式化后按 json 语法高亮（非法 JSON 原样展示）；
+  - 纯文本（txt/log/csv/tsv/ini/env/gitignore 等）：保持等宽换行阅读；
+  - 图片 / PDF / 视频：保持内联；新增音频内联播放；
+  - **Word（.docx）**：新增服务端纯文本提取——`.docx` 按 ZIP 解析中央目录、zlib 解压
+    `word/document.xml`、剥离 XML 得到正文（段落转换行，解码实体），零新依赖；源文件 ≤64MB、
+    提取文本 ≤2MB，结构异常返回 415 让面板回落下载卡片。旧 `.doc`（OLE 二进制）不支持，仍走
+    下载；`.xlsx` / `.pptx` 暂不支持内联预览。
+  - **不可预览类型点击直接下载**：压缩包、旧版 Office、未知二进制等点击后不再打开「仅下载」
+    面板卡片，而是立即触发浏览器下载（同源 `/auth/file`，沿用服务端 Content-Disposition 文件名）。
+  - **修复：含代码围栏的 Markdown 打开即崩溃**——`MarkdownText` 的 `labels` 是必填项（fence
+    复制按钮读 `labels.code.copyLabel`），此前未传导致渲染到代码围栏时抛
+    `Cannot read properties of undefined (reading 'code')`、整个面板树被卸载（侧栏闪现即消失）。
+    现已传入本地化 labels，并为面板体加错误边界：单个面板渲染异常只在该面板内提示，不再拖垮
+    整个侧栏与登录浮层。
+  - 超长文本 / 代码在 40 万字符处截断并提示；
+  - 服务端 `/auth/file` 的 MIME 表补齐文本 / 代码类型（text/plain），修复这些文件「在新标签页
+    打开」变成下载的问题。
 - **升级插件并重启 `dsh web` 后，远程浏览器无需重新登录。**
 
 ## 0.3.1 (2026-09-02)
