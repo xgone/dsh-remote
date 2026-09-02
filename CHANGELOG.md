@@ -2,6 +2,24 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.2 (2026-09-02)
+
+- **适配 dsh ≥ 0.1.2-alpha（issue #11）：远程文件侧栏在新版 dsh 上完全失效**。两层原因，均已修复：
+  1. 新版把原生打开 RPC 从 `host.openPath`（点号端点，`payload.path`）整个换成了
+     `session.openWorkspacePath`（斜杠端点 `/api/session/openWorkspacePath`，参数包在
+     `payload.args.request.path`），客户端 fetch 拦截只匹配旧形状，永远拦不到。拦截器现在
+     同时匹配两代端点形状（`args` 按方法参数名泛化查找 `path`），同一份 bundle 继续同时
+     服务 rc 与 alpha。
+  2. 新版 UI 新增客户端门闩：产物文件「打开」入口只在 `ctx.remote.$host.isLoopback` 为真时
+     渲染（`canOpenPath = isLoopback && hostCanOpenPath`），远程浏览器根本不渲染按钮，拦截
+     无从谈起。插件在远程页面把 connection 事实源翻转为可达（客户端半区的 `trustProxy`：
+     门禁层已放行认证请求，服务端角色门禁仍是执行点），入口恢复渲染、点击进侧栏。
+- 随附：设置平面在远程浏览器改走与 loopback 相同的 host 持久化路径（受服务端角色门禁约束，
+  非 admin 的 settings 写入依旧拒绝）；角色门禁拒绝表补齐 alpha 新名（`session.openWorkspacePath`、
+  `settings.openSettingsDocument`、`settings.openAgentPresetDirectory`），非 admin 依旧无法
+  触发宿主机桌面打开。
+- **升级插件并重启 `dsh web` 后，远程浏览器无需重新登录。**
+
 ## 0.3.1 (2026-09-02)
 
 - **适配 dsh ≥ 0.1.2-alpha（issue #10）**：新版 dsh 的 `client-connection` 额外要求绑定请求 Host 的 `dsh-auth-*` 持久化签名 Cookie，远程浏览器拿不到，导致登录成功后所有 `/api` 返回 401（index.html 也可能 401）。插件现在在登录 / MFA / 引导成功时用核心同款算法铸造并下发两枚 Cookie（分别绑定归一化 loopback 与原始公网 Host），并在门禁层自愈补发。**升级插件后重新登录一次即可**；升级前创建的旧会话在下一次请求时自动修复，无需重新登录。

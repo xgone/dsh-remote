@@ -114,6 +114,7 @@ server {
 | 忘记 MFA / 丢手机 | 管理员登录后：设置 → 登录与账号 → 该账号 → 禁用 MFA |
 | 文件面板提示 `outside-roots` | 设置 → 登录与账号 → 允许的目录，添加该目录（即时生效，无需重启） |
 | 升级 dsh 后登录成功但 `/api` 全部 401 | 升级本插件（≥ 0.3.1）并**重新登录一次**，见 [CHANGELOG](CHANGELOG.md) |
+| 升级 dsh 后点文件路径没反应 / 不再进侧边栏 | 升级本插件（≥ 0.3.2）并重启 `dsh web`，见 [CHANGELOG](CHANGELOG.md) |
 | 升级 dsh 后远程设置页异常 / 反复弹窗 | 先升级本插件——新版 DSH 的远程兼容修复随版本内置，见 [CHANGELOG](CHANGELOG.md) |
 
 ## 文档

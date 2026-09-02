@@ -125,6 +125,7 @@ plaintext password and bind MFA.
 | Lost MFA / phone | As admin: Settings → Auth & Accounts → that account → Disable MFA |
 | File panel reports `outside-roots` | Settings → Auth & Accounts → Allowed directories: add the directory (applies immediately, no restart) |
 | After a dsh upgrade every `/api` call returns 401 despite a successful login | Upgrade this plugin (≥ 0.3.1) and **sign in once more** — see the [CHANGELOG](CHANGELOG.md) |
+| After a dsh upgrade clicking a file path does nothing / never opens the sidebar | Upgrade this plugin (≥ 0.3.2) and restart `dsh web` — see the [CHANGELOG](CHANGELOG.md) |
 | Settings pages misbehave / popups return after a dsh upgrade | Upgrade this plugin first — compatibility fixes for new DSH versions ship built-in, see the [CHANGELOG](CHANGELOG.md) |
 
 ## Documentation

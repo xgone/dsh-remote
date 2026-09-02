@@ -64,6 +64,20 @@ test("evaluateRoleGate: dsh alpha slash endpoint names hit the dotted deny lists
 	assert.equal(evaluateRoleGate("/api/workspace/list", "POST", clientRequest("workspace/list"), "guest").allowed, true);
 });
 
+test("evaluateRoleGate: alpha native-open renames are denied for non-admin", () => {
+	// dsh ≥ 0.1.2-alpha removed the rc `host.*` / `agentPreset.openDocument`
+	// surfaces; the same native-open privileges now live under new names and
+	// must stay non-admin-denied (the remote file panel never reaches the
+	// wire for these — the client half intercepts the fetch first — so this
+	// is defense in depth for loopback multi-role deployments).
+	assert.equal(evaluateRoleGate("/api/session/openWorkspacePath", "POST", clientRequest("session/openWorkspacePath"), "user").allowed, false);
+	assert.equal(evaluateRoleGate("/api/settings/openSettingsDocument", "POST", clientRequest("settings/openSettingsDocument"), "user").allowed, false);
+	assert.equal(evaluateRoleGate("/api/settings/openAgentPresetDirectory", "POST", clientRequest("settings/openAgentPresetDirectory"), "user").allowed, false);
+	// The capability probes stay callable: the produced-files chips need
+	// session/canOpenWorkspacePath to render the open affordances at all.
+	assert.equal(evaluateRoleGate("/api/session/canOpenWorkspacePath", "POST", clientRequest("session/canOpenWorkspacePath"), "user").allowed, true);
+});
+
 test("evaluateRoleGate: workspace.list is allowed for every role", () => {
 	for (const role of ["admin", "user", "guest"]) {
 		assert.equal(evaluateRoleGate("/api/workspace.list", "POST", clientRequest("workspace.list"), role).allowed, true, role);
