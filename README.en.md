@@ -27,8 +27,10 @@ native window ever popping up on the host machine.
   1Password / Authy), scan-to-bind + 10 one-time backup codes; an admin can disable MFA for any
   account if the phone is lost.
 - **Remote file panel**: clicking a file path opens it in a right-side panel instead of a host
-  desktop app (Markdown / image / PDF / text / directory browsing). Only the DSH home directory
-  and the working directory are readable by default; admins can allow more directories from the
+  desktop app, rendered by type — code with syntax highlighting and copy, Markdown rendered,
+  image / PDF / video / audio inline, text and directory browsing, Word (.docx) as extracted
+  text; un-previewable files download directly on click. Only the DSH home directory and the
+  working directory are readable by default; admins can allow more directories from the
   settings page.
 - **Multi-account (optional)**: admin-only by default; turn off `adminOnly` to enable
   admin / user / guest roles.
