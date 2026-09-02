@@ -1,6 +1,6 @@
 {
   "name": "@xgone/dsh-remote",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Remote access & authentication for the DeepSeek Harness web UI: login gate, MFA (TOTP), signed session cookies, role-based access, in-browser directory picker, account management settings. Fully localized (zh/en).",
   "type": "module",
   "main": "lib/index.js",
@@ -18,8 +18,8 @@
   ],
   "scripts": {
     "check": "node --check lib/index.js",
-    "test": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js",
-    "prepublishOnly": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js"
+    "test": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js",
+    "prepublishOnly": "node --check lib/index.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js"
   },
   "license": "MIT",
   "author": "xgone <xl.gone@gmail.com>",

@@ -38,6 +38,15 @@
         rateLimit:
           maxAttempts: 5
           windowMs: 900000
+        # dsh ≥ 0.1.2-alpha compatibility (issue #10): after login this plugin
+        # also mints the core's Host-bound `dsh-auth-*` browser cookie — signed
+        # with client-connection's own persisted secret — so /api, the stream
+        # WebSocket and index.html all authenticate for remote browsers.
+        # cookieTtlSeconds: 0 follows session.ttlSeconds (default; keep it at or
+        # below client-connection's cookieMaxAgeDays, which defaults to 30).
+        browserAuth:
+          enabled: true
+          cookieTtlSeconds: 0
 
 # ── directory picker: force the IN-APP browse backend ────────────────────────
 #

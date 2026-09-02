@@ -218,6 +218,7 @@ kept (delete that file manually if you want a complete reset).
 | Settings → Plugins config page is blank over remote access | Built-in fix since v0.1.5: DSH switches every settings scope to memory mode for remote browsers (reads and writes are dropped client-side); the plugin unpins the scope queue at startup and triggers a full refresh, so the config cards are readable and writable remotely. The raw settings.yaml document editor intentionally stays loopback-only |
 | "Internal Testing Notice" re-pops on every remote refresh | Built-in fix since v0.1.6 (for users who already acknowledged): DSH's welcome-notice acknowledgement (`WelcomeNoticeStore`) runs in memory mode for remote browsers, so the persisted ack is never read; the plugin reads `ui-onboarding.welcomeNoticeVersion` through the official settings.describe RPC and, when one exists, sets the live store's `acknowledged` flag via the official `store.update` API — WelcomeNotice then auto-finishes and the notice stops re-popping. Uses only official slots/store/RPC; no DSH internals rewritten, no persistence flipped. First-time remote users (no ack yet) keep the original behavior |
 | Opening Settings → Models remotely fails with "Failed to load provider catalog: settings are unavailable in this browser" | Built-in fix since v0.2.6: the upgraded DSH routes every settings read through a shared `SettingsDescribeMirror` that is constructed in memory mode for remote browsers (view always undefined), so the Models page rejects. The plugin reads the settings document through the official settings.describe RPC, reaches the mirror through the official `ctx.settingsScope.describe()` service, and folds the document in through the official `store.set` API — the provider catalog loads normally remotely. Uses only official RPC/service/store APIs; no DSH methods rewritten, no persistence flipped |
+| After upgrading to dsh 0.1.2-alpha+, remote login succeeds but every `/api` call returns 401 (index.html may 401 too) | Built-in fix since v0.3.1 (issue #10): the new dsh `client-connection` additionally requires a persistent signed `dsh-auth-*` cookie bound to the request Host, which a remote browser can never obtain or mint; the plugin now mints and sets it at login with the exact core algorithm (one bound to the normalized loopback authority, one to the original public Host) and self-heals at the gate — **upgrade the plugin and sign in once more**; sessions created before the upgrade repair themselves on the next request |
 
 ### 2.6 Headless / Linux server install (no local browser)
 
@@ -287,6 +288,9 @@ Notes:
     files:
       enabled: true          # master switch for remote file display via /auth/file (default on)
       maxListing: 500        # max entries rendered per directory listing page
+    browserAuth:
+      enabled: true          # mint dsh-auth-* cookies on dsh >= 0.1.2-alpha (default on, see 4.3.1)
+      cookieTtlSeconds: 0    # 0 = follow session.ttlSeconds; capped by client-connection.cookieMaxAgeDays
 ```
 
 > **Windows note**: the directories readable by default are the DSH home dir and the dsh
@@ -407,6 +411,49 @@ loopback. After authentication the plugin normalizes the request's `Host`/`Origi
 `127.0.0.1:<port>` (preserving the original scheme) before handing it down — the fence sees
 loopback and privileged methods work for external browsers. Unauthenticated requests are still
 403'd by the gate, so the fence's DNS-rebinding semantics are no longer needed behind the cookie.
+
+### 4.3.1 New-dsh adaptation: minting `dsh-auth-*` session cookies (>= 0.1.2-alpha, issue #10)
+
+Since dsh `0.1.2-alpha`, `client-connection` additionally requires a persistent signed cookie
+**bound to the request Host** (`dsh-auth-<sha256(Host)>`, HMAC-SHA256, keyed by the
+`client-connection/browser-session` record in `$DSH_HOME/.credentials.yaml`) on `/api`, the
+stream WebSocket (`/api/remote.mux`) and index.html alike. That cookie is only minted by dsh's
+own `?token=<launch token>` exchange, which a remote browser can never reach — and it can never
+hold a cookie bound to `127.0.0.1:<port>` — so after login every `/api` call returned 401.
+
+This plugin adapts (on by default, zero configuration):
+
+- **On login / MFA / bootstrap success** it reads client-connection's persisted signing secret
+  and mints two `dsh-auth-*` cookies with the exact core algorithm: one bound to the
+  **normalized loopback authority** (used by `/api` and the stream WebSocket), one bound to the
+  **original public Host** (used by the index/static fallback path);
+- **Self-heal**: every gated request verifies that a live cookie for the relevant authority is
+  present (including core-minted ones) and appends a fresh mint onto the current response when
+  not — sessions created before this fix, or whose cookies were evicted, repair themselves on
+  the next request without re-login;
+- **Old-dsh compatibility**: when the `client-connection/browser-session` credential record is
+  absent (or the runtime has no `credentials` service), minting stays off and behavior is
+  identical to 0.3.0;
+- **Browser-half RPC shape adaptation**: alpha renamed RPC endpoints to `namespace/method`
+  (slash) with a single `args` envelope field (`settings.describe` → `settings/describe`). The
+  client tries the new shape first, falls back to the dotted spelling on 404, and pins whichever
+  worked for the page — one bundle serves both rc and alpha; the host-half role gate likewise
+  normalizes slash method names before matching the dotted deny lists, so non-admin limits hold
+  on both generations.
+
+Configuration (rarely needed):
+
+```yaml
+browserAuth:
+  enabled: true          # minting master switch
+  cookieTtlSeconds: 0    # 0 = follow session.ttlSeconds (default 7d)
+```
+
+> A minted window must not exceed `client-connection`'s `cookieMaxAgeDays` (default 30); the
+> plugin already clamps to that bound. If you lower `cookieMaxAgeDays` in your deployment, lower
+> `cookieTtlSeconds` to match. Deployments running `trustProxy: false` with dsh's native
+> `--trusted-host <domain>` are covered too: the plugin then mints only the cookie bound to the
+> original public Host, and the fence is satisfied via `trustedHosts`.
 
 ### 4.4 Storage (`lib/store.js`)
 
