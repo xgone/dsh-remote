@@ -21,6 +21,7 @@ function loadClientBundle() {
 		if (name === "react/jsx-runtime") return { jsx: () => null };
 		if (name === "react-dom/client") return { createRoot: () => ({ render: () => {}, unmount: () => {} }) };
 		if (name === "@deepseek-ai/dsh-client-ui-primitives") throw new Error("primitives are optional");
+		if (name === "react") return { Component: class Component {} }; // PaneErrorBoundary extends it at factory time
 		return {};
 	};
 	const pageWindow = { __ModuleLoader__: { load: (definition) => loaded.push(definition) } };
@@ -28,7 +29,7 @@ function loadClientBundle() {
 	return loaded[0].factory(stubRequire);
 }
 
-const { kindOf } = loadClientBundle();
+const { kindOf, markdownLabels } = loadClientBundle();
 
 test("kindOf: markdown family renders as markdown", () => {
 	assert.equal(kindOf("report.md").kind, "markdown");
@@ -92,4 +93,21 @@ test("kindOf: unknown extensions fall back to the served content-type, else bina
 	assert.deepEqual(kindOf("blob", "image/png"), { kind: "image", lang: null });
 	assert.deepEqual(kindOf("stream", "video/webm"), { kind: "video", lang: null });
 	assert.deepEqual(kindOf("paper", "application/pdf"), { kind: "pdf", lang: null });
+});
+
+// ── MarkdownText labels: fences crash the panel without them ───────────────────
+
+test("markdownLabels: satisfies the shape MarkdownText's fence renderer reads", () => {
+	// renderCode reads `labels.code.copyLabel` / `labels.code.copiedLabel`
+	// and the footnotes section reads `labels.footnotes`. All three were
+	// undefined before the fix, so any markdown file containing a code fence
+	// threw "Cannot read properties of undefined (reading 'code')" and
+	// unmounted the whole overlay root.
+	const labels = markdownLabels();
+	assert.equal(typeof labels.code.copyLabel, "string");
+	assert.ok(labels.code.copyLabel.length > 0);
+	assert.equal(typeof labels.code.copiedLabel, "string");
+	assert.ok(labels.code.copiedLabel.length > 0);
+	assert.equal(typeof labels.footnotes, "string");
+	assert.ok(labels.footnotes.length > 0);
 });

@@ -28,7 +28,8 @@ function loadClientBundle() {
 		if (name === "react/jsx-runtime") return { jsx: () => null };
 		if (name === "react-dom/client") return { createRoot: () => ({ render: () => {}, unmount: () => {} }) };
 		if (name === "@deepseek-ai/dsh-client-ui-primitives") throw new Error("primitives are optional");
-		return {}; // react and every other shell module
+		if (name === "react") return { Component: class Component {} }; // PaneErrorBoundary extends it at factory time
+		return {}; // every other shell module
 	};
 	const pageWindow = { __ModuleLoader__: { load: (definition) => loaded.push(definition) } };
 	new Function("window", source)(pageWindow);

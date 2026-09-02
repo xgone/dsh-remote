@@ -18,6 +18,11 @@
     下载；`.xlsx` / `.pptx` 暂不支持内联预览。
   - **不可预览类型点击直接下载**：压缩包、旧版 Office、未知二进制等点击后不再打开「仅下载」
     面板卡片，而是立即触发浏览器下载（同源 `/auth/file`，沿用服务端 Content-Disposition 文件名）。
+  - **修复：含代码围栏的 Markdown 打开即崩溃**——`MarkdownText` 的 `labels` 是必填项（fence
+    复制按钮读 `labels.code.copyLabel`），此前未传导致渲染到代码围栏时抛
+    `Cannot read properties of undefined (reading 'code')`、整个面板树被卸载（侧栏闪现即消失）。
+    现已传入本地化 labels，并为面板体加错误边界：单个面板渲染异常只在该面板内提示，不再拖垮
+    整个侧栏与登录浮层。
   - 超长文本 / 代码在 40 万字符处截断并提示；
   - 服务端 `/auth/file` 的 MIME 表补齐文本 / 代码类型（text/plain），修复这些文件「在新标签页
     打开」变成下载的问题。
