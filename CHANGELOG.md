@@ -2,6 +2,25 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.3 (2026-09-02)
+
+- **文件面板按类型渲染**：不再一视同仁地按纯文本/Markdown 展示，改为按扩展名选择策略——
+  - 代码 / 配置（ts/js/py/go/rs/java/c/cpp/c#/swift/sh/yaml/toml/html/css 等）：改用 shell 自带的
+    `CodeBlock`——shiki 语法高亮、复制按钮、懒加载语法、跟随明暗主题，语言提示与 DSH read 卡片
+    同一映射，未知语言回落纯等宽（缺 primitives 包时同样回落）；
+  - Markdown（.md/.markdown/.mdx）：保持现有渲染样式不变；
+  - JSON：格式化后按 json 语法高亮（非法 JSON 原样展示）；
+  - 纯文本（txt/log/csv/tsv/ini/env/gitignore 等）：保持等宽换行阅读；
+  - 图片 / PDF / 视频：保持内联；新增音频内联播放；
+  - **Word（.docx）**：新增服务端纯文本提取——`.docx` 按 ZIP 解析中央目录、zlib 解压
+    `word/document.xml`、剥离 XML 得到正文（段落转换行，解码实体），零新依赖；源文件 ≤64MB、
+    提取文本 ≤2MB，结构异常返回 415 让面板回落下载卡片。旧 `.doc`（OLE 二进制）不支持，仍走
+    下载；`.xlsx` / `.pptx` 暂不支持内联预览。
+  - 超长文本 / 代码在 40 万字符处截断并提示；
+  - 服务端 `/auth/file` 的 MIME 表补齐文本 / 代码类型（text/plain），修复这些文件「在新标签页
+    打开」变成下载的问题。
+- 升级后重启 `dsh web` 生效；远程浏览器无需重新登录。
+
 ## 0.3.2 (2026-09-02)
 
 - **适配 dsh ≥ 0.1.2-alpha（issue #11）：远程文件侧栏在新版 dsh 上完全失效**。两层原因，均已修复：
