@@ -136,9 +136,9 @@ plaintext password and bind MFA.
   upgrade" compatibility fixes;
 - **Technical reference**: [docs/REFERENCE.md](docs/REFERENCE.md) — architecture, internals,
   full configuration and endpoint reference (for AI agents and contributors);
-- **Cloudflare Tunnel deployment**: [docs/CLOUDFLARE-TUNNEL.md](docs/CLOUDFLARE-TUNNEL.md)
-  (in Chinese) — tunnel-based access with no public IP or open ports, including a paste-ready
-  deployment brief for AI agents.
+- **Cloudflare Tunnel deployment**: [docs/CLOUDFLARE-TUNNEL.en.md](docs/CLOUDFLARE-TUNNEL.en.md)
+  — tunnel-based access with no public IP or open ports, including a paste-ready deployment
+  brief for AI agents.
 
 ## Uninstall
 

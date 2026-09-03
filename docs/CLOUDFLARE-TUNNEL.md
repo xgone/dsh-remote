@@ -1,5 +1,7 @@
 # 通过 Cloudflare Tunnel（cloudflared）穿透访问 dsh-remote
 
+> [English](CLOUDFLARE-TUNNEL.en.md) | 中文
+>
 > 本文是**部署指南**：用 Cloudflare Tunnel 把 `dsh web` 安全暴露到公网，无需公网 IP、无需
 > 开防火墙端口、无需自备 TLS 证书。步骤给出每步命令与**预期输出**，可直接交给 AI agent
 > 执行（文末附「部署任务书」，整段复制给 agent 即可）。
