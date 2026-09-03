@@ -135,7 +135,10 @@ plaintext password and bind MFA.
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md) — changes per version, including "after a dsh
   upgrade" compatibility fixes;
 - **Technical reference**: [docs/REFERENCE.md](docs/REFERENCE.md) — architecture, internals,
-  full configuration and endpoint reference (for AI agents and contributors).
+  full configuration and endpoint reference (for AI agents and contributors);
+- **Cloudflare Tunnel deployment**: [docs/CLOUDFLARE-TUNNEL.en.md](docs/CLOUDFLARE-TUNNEL.en.md)
+  — tunnel-based access with no public IP or open ports, including a paste-ready deployment
+  brief for AI agents.
 
 ## Uninstall
 

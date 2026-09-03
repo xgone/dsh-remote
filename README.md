@@ -123,7 +123,9 @@ server {
 
 - **更新记录**：[CHANGELOG.md](CHANGELOG.md) —— 每个版本的变更与「升级 dsh 后」兼容修复；
 - **技术细节**：[docs/REFERENCE.md](docs/REFERENCE.md) —— 架构、实现机制、完整配置与端点
-  参考（供 AI agent 与贡献者查阅）。
+  参考（供 AI agent 与贡献者查阅）；
+- **Cloudflare Tunnel 部署**：[docs/CLOUDFLARE-TUNNEL.md](docs/CLOUDFLARE-TUNNEL.md) —— 免公网
+  IP / 免开端口的隧道穿透访问，含可整段交给 AI agent 的部署任务书。
 
 ## 卸载
 
