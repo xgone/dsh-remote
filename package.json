@@ -1,6 +1,6 @@
 {
   "name": "@xgone/dsh-remote",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Remote access & authentication for the DeepSeek Harness web UI: login gate, MFA (TOTP), signed session cookies, role-based access, in-browser directory picker, account management settings. Fully localized (zh/en).",
   "type": "module",
   "main": "lib/index.js",
@@ -46,9 +46,9 @@
     "login"
   ],
   "dependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-home-paths": "^0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "^3.18.1",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-home-paths": "^0.2.0-rc.1",
+    "@deepseek-ai/schemastery": "^3.18.4",
     "qrcode": "^1.5.4"
   },
   "dsh": {
