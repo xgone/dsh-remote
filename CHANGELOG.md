@@ -2,6 +2,10 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.5 (2026-09-29)
+
+- **修复远程模型设置页加载提供商目录失败**：显式等待 DSH `configForms` 服务就绪后再注入远程设置 describe mirror，避免 DSH 0.2 的客户端服务访问 guard 让 mirror 保持 unavailable 状态。
+
 ## 0.3.4 (2026-09-29)
 
 - **适配 dsh 0.2.0-rc.1**：升级 Cordis、`dsh-home-paths` 和 Schemastery 到新版 DSH 使用的 npm 依赖版本，避免插件运行时继续解析旧版核心包。

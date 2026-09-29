@@ -109,6 +109,7 @@ test("client bundle keeps the client-plugin contract and version marker", () => 
 	assert.equal(typeof bundle.apply, "function");
 	assert.ok(Array.isArray(bundle.inject), "inject must be exported");
 	assert.ok(bundle.inject.includes("connection"), "inject must include connection for the isLoopback flip");
+	assert.ok(bundle.inject.includes("configForms"), "inject must wait for the settings describe mirror");
 	assert.equal(typeof extract, "function");
 	assert.equal(typeof bundle.installRemoteFileOpen, "function");
 });
