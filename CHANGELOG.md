@@ -2,6 +2,14 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.6 (2026-10-20)
+
+- **支持 PWA 安装（桌面与移动端）**：未登录访客也能拿到 `/manifest.webmanifest`、`/sw.js` 与 `/icons/*`，并带正确 MIME、worker 的 `Service-Worker-Allowed: /` 与 `no-store`。
+- `makeGzipRes` 不再覆盖调用方已给出的 `cache-control`，压缩路径上的 `no-store` 不再被冲掉。
+- **首次导航不再 401**：补发 `dsh-auth` Cookie 时同步注入本次请求的 Cookie 头（同名旧值整段替换、其余原样保留），首屏即通过核心 `browserAuth` 校验。
+- 补发仍只发生在**已认证**的页面响应上，未认证访客不会被签发 Cookie，故从应用图标冷启动也不停在登录页。
+- 新增 `test/pwa.test.js`（32 项）并纳入 `npm test`。
+
 ## 0.3.5 (2026-09-29)
 
 - **修复远程模型设置页加载提供商目录失败**：显式等待 DSH `configForms` 服务就绪后再注入远程设置 describe mirror，避免 DSH 0.2 的客户端服务访问 guard 让 mirror 保持 unavailable 状态。
