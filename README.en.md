@@ -19,6 +19,7 @@
 - [Screenshots](#screenshots)
 - [Getting started](#getting-started)
 - [Remote access](#remote-access)
+- [Install as an app](#install-as-an-app-pwa)
 - [Configuration](#configuration)
 - [Headless servers](#headless-servers-no-local-browser)
 - [FAQ](#faq)
@@ -34,6 +35,7 @@
 - **Sessions and roles**: signed session cookies; admin-only mode by default, with optional `admin` / `user` / `guest` roles.
 - **Remote file panel**: preview code, Markdown, images, PDF, video, audio, text, directories, and extracted `.docx` text in a right-side panel. Unsupported files download directly. Only the DSH home and working directories are readable by default; admins can add allowed roots.
 - **Remote access**: works behind nginx, SSH tunnels, Tailscale, Frp, Cloudflare Tunnel, and similar transports with end-to-end WebSocket events.
+- **Installable as a desktop or phone app**: the manifest, Service Worker, and icons are served before sign-in, so DSH installs into its own window on desktop and mobile, with the cookie repaired on a cold launch. See [Install as an app](#install-as-an-app-pwa).
 - **Browser-native workspace flow**: selecting or creating a workspace uses an in-browser directory dialog instead of opening a host OS file picker.
 - **Localized and lightweight**: follows DSH light / dark theme and language, with English and Chinese UI; remote responses are gzipped by default and hashed assets work well with edge caches.
 
@@ -99,6 +101,29 @@ server {
 
 SSH reverse tunnels, Tailscale, Frp, and Cloudflare Tunnel work the same way. For HTTPS deployments, set `session.secure` to `true` in the configuration.
 
+## Install as an app (PWA)
+
+Since 0.3.6, DSH installs as an app in its own window — from the launcher, dock, or taskbar on desktop, from a home-screen icon on mobile — much like a native app.
+
+**Prerequisite: serve it over HTTPS.** A Service Worker only registers in a secure context, so a plain `http://` LAN address (an unencrypted domain, a bare IP) will not install; `localhost` / `127.0.0.1` is the one exception. The same applies to desktop and mobile alike.
+
+Steps: open the deployed HTTPS URL in a browser and sign in once, then pick the entry point for your environment.
+
+| Environment | Where to install |
+|---|---|
+| Desktop Chromium (Chrome, Edge, Brave, …) | The install icon at the right end of the address bar; or menu → "Install…" / "Apps" → "Install this site". |
+| Desktop Safari (macOS Sonoma / Safari 17 and later) | Menu bar **File → Add to Dock**. |
+| Android (Chrome, Edge, …) | Menu → "Install app" or "Add to Home screen". |
+| iOS Safari (iOS 16.4 and later) | Share → "Add to Home Screen". On iOS, Chrome, Edge, and other third-party browsers route through that same share sheet. |
+
+Firefox does not support manifest-based PWA installation, on desktop or mobile; with Firefox, just use DSH in a regular tab.
+
+> A separate route, unrelated to this section: Chrome / Edge on desktop and Safari on desktop can install **any site** as a standalone window without reading its manifest. That is not the same as the manifest-plus-Service-Worker PWA install above — don't conflate the two when troubleshooting.
+
+Once installed, launching from the app icon runs it in its own window. The plugin already serves the manifest, Service Worker, and icons before sign-in, with the right MIME types, worker scope, and `no-store`; the `dsh-auth` cookie is re-minted only on **authenticated** page responses and injected into that same request, so a cold launch does not stop at the login page.
+
+**No nginx snippet is needed.** All of the above is handled by the plugin itself, so keep the reverse-proxy config above as-is; just confirm the HTTPS certificate and `session.secure`.
+
 ## Configuration
 
 Edit the `config` of the `remote` row in `~/.dsh/profiles/web/cordis.patch.yml`:
@@ -140,6 +165,8 @@ Add the `bootstrap` block above to `cordis.patch.yml` and restart. The first adm
 | After a dsh upgrade every `/api` call returns 401 despite a successful login | Upgrade this plugin (≥ 0.3.1) and **sign in once more**; see [CHANGELOG](CHANGELOG.md). |
 | After a dsh upgrade clicking a file path does nothing / never opens the sidebar | Upgrade this plugin (≥ 0.3.2) and restart `dsh web`; see [CHANGELOG](CHANGELOG.md). |
 | Settings pages misbehave / popups return after a dsh upgrade | Upgrade this plugin first; compatibility fixes for new DSH versions ship built-in. See [CHANGELOG](CHANGELOG.md). |
+| The browser offers no install entry / the installed app opens as a browser tab | Upgrade this plugin (≥ 0.3.6) and visit it **over HTTPS** (a Service Worker only registers in a secure context, so a bare `http://` IP will not install); Firefox does not support manifest-based installs. See [Install as an app](#install-as-an-app-pwa). |
+| A cold launch from the app icon still stops at the login page | Plugin ≥ 0.3.6 re-mints the `dsh-auth` cookie automatically. If it still happens, check that the proxy is not rewriting `Host`. |
 
 ## Documentation
 

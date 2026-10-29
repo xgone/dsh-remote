@@ -30,7 +30,7 @@ dsh-remote/
 │   ├── login-page.js  # 自包含登录页（密码 → 动态码 → 绑定引导，含二维码），zh/en
 │   ├── files-store.js # 允许目录的持久化（dsh-remote-files.json，0600 原子写入）
 │   └── client.js      # 浏览器半区：重登浮层、设置页「登录与账号」、远程文件侧栏、语言持久化
-├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth
+├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth / pwa
 └── package.json       # dsh.bundle.patch + dsh.client 声明 + ./client 导出
 ```
 
@@ -58,6 +58,47 @@ dsh-remote/
   （回显 rpcId），浏览器按业务错误处理而不是传输故障（v0.2.7 修复）。
 - 方法名归一化：dsh alpha 用 `namespace/method`（斜杠），rc 用点号；服务端先把斜杠归一化为
   点号再匹配拒绝表，两代 dsh 限制一致。
+
+### 3.1 PWA 静态平面（0.3.6）
+
+未登录访客原本对 `/manifest.webmanifest`、`/sw.js`、`/icons/*` 也只拿到登录页 HTML，
+浏览器因此判定「不可安装」。现在这三类路径在 `wrapFallback` 的未登录分支里单独放行：
+
+- **放行与设备无关**：三处判定只看请求路径，不读 `User-Agent`，也没有任何移动端/桌面端
+  分支。清单本身（`name`、`start_url`、`display: standalone`、`display_override`、
+  192×192 与 512×512 图标）与带 `fetch` 处理器的 `sw.js` 都已满足 Chromium 桌面的安装条件，
+  因此桌面浏览器与移动端浏览器都能把 DSH 装成独立窗口；差异只在浏览器侧的安装入口
+  （Chromium 桌面为地址栏安装图标，Safari 桌面为「文件 → 添加到程序坞」，Firefox 不支持
+  按清单安装）。
+- **安全上下文是硬前提**：Service Worker 只在 HTTPS（或 `localhost` / `127.0.0.1`）下注册，
+  协议不满足时装不上、与设备无关。
+
+- `isPwaAssetPath(rawPathname)` 精确判定：`PWA_EXACT_FILES`（`/manifest.webmanifest`、
+  `/sw.js`）与根级 `/icons/<单段文件名>`（不含 `.`/`..`、不含空格、不含编码变体——
+  编码由核心自行解码，这里只做原样匹配，避免 `%2e%2e` 之类绕过）。
+- 放行后仍经过 gzip 包装与 `makePwaRes`：`pwaHeadersFor` 修正 MIME
+  （`.webmanifest` → `application/manifest+json`，`.png`/`.ico` 由插件补表项，
+  核心原来回落 `application/octet-stream`）、给 `/sw.js` 加 `Service-Worker-Allowed: /`，
+  并给这三个路径一律写 `cache-control: no-store`。
+  - 只改「核心没定型」的响应：`staticContentTypeFor` 仅在 `content-type` 缺省或为
+    `application/octet-stream` 时改写；核心已给出的类型（含 `/sw.js`、图标缺失时回落的
+    `text/html`）原样保留，不把 HTML 谎称 JavaScript。
+  - `Service-Worker-Allowed` 只对 worker 脚本有效，因此只发给 `/sw.js`（`/`）；文档类
+    响应不发（浏览器本就忽略，发 `./` 只会误导排查）。
+- 未认证分支**不签发任何 Cookie**。给匿名 GET 签发 Host 绑定的 `dsh-auth` 等于把核心
+  browserAuth 降级成「先做一次匿名 GET」；而匿名访客手里没有 `dsh_session`，签了也用不上。
+  Cookie 修复只发生在**已认证**的文档类响应上（`wrapFallback` 认证分支），由
+  `ensureDshAuthCookie` 在 jar 缺 `dsh-auth` 时补发，并把补发的值同时注入本次请求的
+  Cookie 头（见 §6「补发即注入」）——否则补发的那次导航仍会被核心判为未认证。
+- 文档类响应的 `no-store` 只在**真的补发了 Cookie** 时才加：`makePwaRes` 的 `healCookie`
+  谓词除路径判定外，还要求响应上确实存在 `set-cookie` 头（`hasSetCookieHeader`，经
+  gzip/PWA 包装代理调用真实 `res.getHeader`）。jar 健全时 `ensureDshAuthCookie` 是 no-op，
+  该谓词为假，SPA 文档照常按 `shouldCache` 缓存，不会每次导航重拉 `index.html`。
+  PWA 三个叶子不受此条件影响，永远 `no-store`。
+- 为配合上面的 `no-store`，`makeGzipRes` 改为**调用方已给出 `cache-control` 时不覆盖**——
+  此前它对 `shouldCache(req)` 命中的路径无条件写 `public, max-age=31536000, immutable`
+  （`/manifest.webmanifest` 正在其列），会把 `no-store` 静默冲掉。
+- 未登录的 GET 仍然返回登录页（文档化的行为），只有非 GET 才 403；`/assets/*` 等仍不放行。
 
 ## 4. 会话与口令
 
@@ -91,7 +132,21 @@ DSH 围栏校验：`Host`（loopback 或 `trustedHosts`）、`Origin` 与 Host �
     两枚 Cookie：绑定**归一化 loopback authority**（供 `/api` 与 WebSocket）+ 绑定**原始公网
     Host**（供 index.html / 静态回退）；
   - **自愈补发**：每个经过门禁的请求校验 Cookie 是否在位且有效（含核心自铸的），缺失或失效时
-    在当前响应上补发——旧会话、被清理过 Cookie 的会话下一次请求自动修复；
+    在当前响应上补发——旧会话、被清理过 Cookie 的会话下一次请求自动修复。补发只发生在**已认证**
+    的请求上（见 §3.1）：未认证访客不会被签发核心 Cookie，文档类响应也只在真的写了 `Set-Cookie`
+    时才标 `no-store`；
+  - **补发即注入（0.3.6）**：`Set-Cookie` 只改浏览器侧的 Cookie 罐，而核心在**同一个请求**里读的
+    是 `req.headers.cookie`，所以只补发响应头时补发的那次导航仍会拿到核心的纯文本 401。因此
+    `ensureDshAuthCookie` 在真的铸造了 Cookie 时，同时把这枚 `name=value` 写回本次请求的
+    `req.headers.cookie`，首次导航即通过核心校验。改写走 `cookieHeaderSet`：
+    - 同名段**整段替换**而非追加——核心取的是**第一个**同名段，追加会让它继续读到旧的失效值，
+      而这正是「`hasLiveDshAuthCookie` 为假」的情形；
+    - 其余 Cookie（`dsh_session` 等）保持原有顺序与原文，只做去空白拼接，空头则直接写 `name=value`；
+    - 只改内存中的请求对象，除 `Set-Cookie` 外不向外多发任何东西。
+  - 两条调用路径都生效：`wrapFallback` 已认证文档/PWA 分支用**原始 Host** authority，
+    `wrapHttp`（`/api`、WebSocket 升级）用**归一化 loopback** authority（`normalizeForFence`
+    已把 `req.headers.host` 改写，核心取的也是 loopback，两边一致）。URL 带 `?token=` 时不注入，
+    保留核心自己的 303 + 发 Cookie 装机流程。
   - **旧版兼容**：读不到凭证记录（或运行时无 `credentials` 服务）时自动关闭，行为与 0.3.0 一致。
 - 约束：Cookie 有效窗口不超过 `client-connection` 的 `cookieMaxAgeDays`（默认 30 天），
   插件自动收敛到该上限；部署调低 `cookieMaxAgeDays` 时需同步调低 `browserAuth.cookieTtlSeconds`。
@@ -294,7 +349,8 @@ persistence：
 ## 18. 开发与测试
 
 - 语法检查：`npm run check`（`node --check lib/index.js`）；
-- 测试：`npm test`（node:test：gzip / remote-file / role-gate / files-store / browser-auth）；
+- 测试：`npm test`（node:test：gzip / remote-file / role-gate / files-store / browser-auth /
+  open-path-shape / docx-extract / file-kind / pwa）；
   `prepublishOnly` 同样执行，发版走 tag 触发的 CI；
 - 浏览器半区无构建步骤（手写 ModuleLoader 模块），改动 `lib/client.js` 后需重启 `dsh web`
   并强刷浏览器验证。
