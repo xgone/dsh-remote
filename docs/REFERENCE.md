@@ -30,7 +30,7 @@ dsh-remote/
 │   ├── login-page.js  # 自包含登录页（密码 → 动态码 → 绑定引导，含二维码），zh/en
 │   ├── files-store.js # 允许目录的持久化（dsh-remote-files.json，0600 原子写入）
 │   └── client.js      # 浏览器半区：重登浮层、设置页「登录与账号」、远程文件侧栏、语言持久化
-├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth / pwa
+├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth / pwa / resource-fallback
 └── package.json       # dsh.bundle.patch + dsh.client 声明 + ./client 导出
 ```
 
@@ -46,6 +46,11 @@ dsh-remote/
 - 包装 `register` / `registerUpgrade` / `registerFallback` 三个方法，并对
   `webServer.exact / prefixes / upgrades` 与 `fallback` 中**已注册**的每一项逐个包装：
   `Symbol` 标记防止重复包装；`WeakMap` 记录原始处理器，卸载时还原。
+- **dsh ≥ 0.2.2-alpha 的 Fetch `resource` 形态**：该版本把 fallback 座位与部分路由（如 `/plugins/*`）
+  从 node:http handler 改为 `(request, peer?) => Promise<Response>`。门禁对 `.handler` 与 `.resource`
+  两种形态分别分派；resource 形态走等价策略（未登录文档返回登录页、PWA 三件套放行、
+  非页面请求 403、已登录文档注入 `dsh-auth` cookie），否则 node 包装遇到非函数会原样返回、
+  整条门禁被静默跳过，未登录访客落到核心 `authorizeIndex` 而只能用终端 token（issue #27）。
 - 包装后的 HTTP 处理器流程：
   `/auth/*` 放行 → 无有效会话时页面请求返回登录页、其余 403 → 通过后**先归一化
   Host/Origin 再交给下层**（trustProxy，见 §5）→ 浏览器认证 Cookie 自愈补发（见 §6）。

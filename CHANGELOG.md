@@ -2,6 +2,15 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.7-next.1 (2026-11-02)
+
+> 预发布：针对尚未发布 RC 的 dsh **0.2.2-alpha** 的兼容修复，发布在 npm `next` 标签下（`latest` 仍为 0.3.6）。
+
+- **修复（issue #27）：在 dsh 0.2.2-alpha 上首次访问仍要终端打印的 secret（`dsh web: …?token=`）。** 0.2.2-alpha 把 web 服务器的 fallback 座位与路由从 node:http handler 改成了 Fetch「resource」（`(request, peer?) => Promise<Response>`）：frontend-static 用 resource 占 fallback，`/plugins/*` 也变成 resource 前缀路由。登录门禁的 node 包装只认函数，遇到 resource 时 `typeof !== "function"` 直接原样返回，于是**整条门禁被静默跳过**——未登录访客一路落到核心的 `authorizeIndex`，只能靠终端 token 换 cookie；换浏览器 / 清 cookie 就又要一次 token。
+  - 新增 resource 形态的门禁：fallback resource 与 resource 路由都按同一策略包装（未登录文档返回登录页、PWA 三件套放行且 `no-store`、非页面请求 403、已登录文档补发/注入 `dsh-auth` cookie）。
+  - 路由包装与拆除同时兼容 `.handler`（node）与 `.resource`（Fetch）两种形态；`register` / `registerFallback` 的拦截也按形态分派。
+  - 新增 `test/resource-fallback.test.js`（6 项）并纳入 `npm test`。
+
 ## 0.3.6 (2026-10-20)
 
 - **支持 PWA 安装（桌面与移动端）**：未登录访客也能拿到 `/manifest.webmanifest`、`/sw.js` 与 `/icons/*`，并带正确 MIME、worker 的 `Service-Worker-Allowed: /` 与 `no-store`。
