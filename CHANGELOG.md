@@ -2,6 +2,10 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## Unreleased
+
+- **修复（issue #19）：把共享宿主包 `@deepseek-ai/cordis`、`@deepseek-ai/dsh-home-paths`、`@deepseek-ai/schemastery` 从 `dependencies` 挪到 `peerDependencies`**。运行时直接复用宿主实例，消除 pnpm 在 profile 根 hoist 出的第二份物理拷贝，以及 DSH 插件管理页「插件在 dependencies 中声明了已知的 DSH 共享宿主包」的诊断警告；`qrcode` 仍保留在 `dependencies`。
+
 ## 0.3.7-next.1 (2026-11-02)
 
 > 预发布：针对尚未发布 RC 的 dsh **0.2.2-alpha** 的兼容修复，发布在 npm `next` 标签下（`latest` 仍为 0.3.6）。
