@@ -30,7 +30,7 @@ dsh-remote/
 │   ├── login-page.js  # 自包含登录页（密码 → 动态码 → 绑定引导，含二维码），zh/en
 │   ├── files-store.js # 允许目录的持久化（dsh-remote-files.json，0600 原子写入）
 │   └── client.js      # 浏览器半区：重登浮层、设置页「登录与账号」、远程文件侧栏、语言持久化
-├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth / pwa
+├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth / pwa / resource-fallback
 └── package.json       # dsh.bundle.patch + dsh.client 声明 + ./client 导出
 ```
 
@@ -46,6 +46,17 @@ dsh-remote/
 - 包装 `register` / `registerUpgrade` / `registerFallback` 三个方法，并对
   `webServer.exact / prefixes / upgrades` 与 `fallback` 中**已注册**的每一项逐个包装：
   `Symbol` 标记防止重复包装；`WeakMap` 记录原始处理器，卸载时还原。
+- **dsh ≥ 0.2.2-alpha 的 Fetch `resource` 形态**：该版本把 fallback 座位与部分路由（如 `/plugins/*`）
+  从 node:http handler 改为 `(request, peer?) => Promise<Response>`。门禁对 `.handler` 与 `.resource`
+  两种形态分别分派；resource 形态走等价策略（未登录文档返回登录页、PWA 三件套放行、
+  非页面请求 403、已登录文档注入 `dsh-auth` cookie），否则 node 包装遇到非函数会原样返回、
+  整条门禁被静默跳过，未登录访客落到核心 `authorizeIndex` 而只能用终端 token（issue #27）。
+- **`peer` 是「准入凭据」而不是请求字段（0.3.7-next.2）**：0.2.2 的
+  `webServer.readResource(request, peer)` 按同一 URL 求出响应，把它算给**调用方已准入**的 Peer，
+  宿主契约明确写出这种进程内读取不检查 cookie / Host / Origin（`frontend-static` 同样跳过
+  自己的 `authorizeIndex`）。因此 resource 门禁只在 `peer === undefined`（真实 HTTP 请求，
+  `serveResource` 不传 Peer）时做会话认证；带 Peer 的读取原样转发、不铸 cookie。否则进程内读
+  `/` 会得到登录页、读 `/assets/*` 与 `/plugins/*` 会得到 403。
 - 包装后的 HTTP 处理器流程：
   `/auth/*` 放行 → 无有效会话时页面请求返回登录页、其余 403 → 通过后**先归一化
   Host/Origin 再交给下层**（trustProxy，见 §5）→ 浏览器认证 Cookie 自愈补发（见 §6）。
@@ -74,8 +85,13 @@ dsh-remote/
   协议不满足时装不上、与设备无关。
 
 - `isPwaAssetPath(rawPathname)` 精确判定：`PWA_EXACT_FILES`（`/manifest.webmanifest`、
-  `/sw.js`）与根级 `/icons/<单段文件名>`（不含 `.`/`..`、不含空格、不含编码变体——
-  编码由核心自行解码，这里只做原样匹配，避免 `%2e%2e` 之类绕过）。
+  `/sw.js`）、根级 `/icons/<单段文件名>`，以及 **0.2.2 起根级的安装图标**
+  `PWA_ROOT_ICON_RE`（`/icon*.png`、`/apple-touch-icon*.png`，单段路径、保守字符集；
+  不含子目录与编码变体——编码由核心自行解码，这里只做原样匹配，避免 `%2e%2e` 之类绕过）。
+  - dsh 0.2.2 的 web dist 把安装图标放在 web 根目录（`icon-192.png`、`icon-512.png`、
+    `icon-maskable-512.png`、`apple-touch-icon.png`），清单以相对路径引用，浏览器在安装时、
+    任何会话存在之前抓取它们；只放行 `/icons/*` 会让未登录访客拿到登录页 HTML，
+    装出来的窗口没有图标。
 - 放行后仍经过 gzip 包装与 `makePwaRes`：`pwaHeadersFor` 修正 MIME
   （`.webmanifest` → `application/manifest+json`，`.png`/`.ico` 由插件补表项，
   核心原来回落 `application/octet-stream`）、给 `/sw.js` 加 `Service-Worker-Allowed: /`，

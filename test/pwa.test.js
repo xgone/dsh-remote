@@ -49,6 +49,17 @@ test("isPwaAssetPath: the manifest, the service worker and one icon", () => {
 	}
 });
 
+test("isPwaAssetPath: root-level app icons dsh >= 0.2.2's manifest names", () => {
+	// dsh 0.2.2 ships the install icons at the web root and the manifest names
+	// them relatively; a browser fetches them before any session exists.
+	for (const p of [
+		"/icon-192.png", "/icon-512.png", "/icon-maskable-512.png",
+		"/apple-touch-icon.png", "/apple-touch-icon-precomposed.png", "/icon.png"
+	]) {
+		assert.equal(isPwaAssetPath(p), true, `expected root icon to be public: ${p}`);
+	}
+});
+
 test("isPwaAssetPath: nothing else escapes the gate", () => {
 	for (const p of [
 		"/", "/index.html", "/assets/index-abc.js", "/api/session.history", "/auth/me",
@@ -56,8 +67,11 @@ test("isPwaAssetPath: nothing else escapes the gate", () => {
 		"/icons/", "/icons/a/b.png", "/icons/../sw.js", "/icons/..", "/icons/.", "/icons/a b.png",
 		// only the ROOT /icons/ directory
 		"/x/icons/icon-192.png",
+		// root icons are single-segment PNGs only: no subdirectories, no other
+		// extensions, no extension-less spellings
+		"/deep/icon-192.png", "/icon-192.svg", "/icon-192", "/apple-touch-icon",
 		// encoded spellings are NOT classified here: the core decodes them itself
-		"/%73w.js", "/sw%2Ejs", "/icons/icon%2E192%2Epng"
+		"/%73w.js", "/sw%2Ejs", "/icons/icon%2E192%2Epng", "/icon%2D192.png"
 	]) {
 		assert.equal(isPwaAssetPath(p), false, `expected gated: ${p}`);
 	}
@@ -423,7 +437,13 @@ async function withPlugin(run, { credentials, api, coreAuth } = {}) {
 
 test("gate: sw.js, the manifest and an icon answer WITHOUT a session", async () => {
 	await withPlugin(async ({ server }) => {
-		for (const path of ["/sw.js", "/manifest.webmanifest", "/icons/icon-192.png"]) {
+		// The first three are the 0.3.6 plane; the root-level PNGs are what dsh
+		// >= 0.2.2's manifest actually names (its dist moved the install icons to
+		// the web root). Both families must reach the static layer anonymously.
+		for (const path of [
+			"/sw.js", "/manifest.webmanifest", "/icons/icon-192.png",
+			"/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/apple-touch-icon.png"
+		]) {
 			const res = await sendRaw(server, { path });
 			assert.equal(res.status, 200, `${path} must be served unauthenticated`);
 			// gzip is on by default and the PWA plane sits inside it, so the
@@ -436,6 +456,10 @@ test("gate: sw.js, the manifest and an icon answer WITHOUT a session", async () 
 		assert.equal(sw.headers["service-worker-allowed"], "/");
 		const icon = await sendRaw(server, { path: "/icons/icon-192.png" });
 		assert.equal(icon.headers["content-type"], "image/png");
+		// A root icon must arrive as an image the installer accepts, not octet-stream.
+		const rootIcon = await sendRaw(server, { path: "/icon-192.png" });
+		assert.equal(rootIcon.headers["content-type"], "image/png");
+		assert.equal(rootIcon.headers["cache-control"], "no-store");
 	});
 });
 
