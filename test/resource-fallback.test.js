@@ -78,13 +78,16 @@ function resourceCore({ coreAuth = false } = {}) {
 		resource: async () => new Response("BUNDLE", { status: 200, headers: { "content-type": "text/javascript" } }),
 	});
 	webServer.fallback = {
-		resource: async (request) => {
+		resource: async (request, peer) => {
 			const pathname = new URL(request.url).pathname;
 			calls.push({ pathname, cookie: request.headers.get("cookie"), host: request.headers.get("host") });
 			if (isPwaAssetPath(pathname)) {
 				return new Response(`ASSET:${pathname}`, { status: 200, headers: { "content-type": "application/octet-stream" } });
 			}
-			if (coreAuth) {
+			// frontend-static skips `authorizeIndex` for an in-process read whose
+			// caller admitted the Peer (`() => peer === undefined ? authorizeIndex(request) : undefined`);
+			// only an HTTP request (no Peer) carries the browser-authentication check.
+			if (coreAuth && peer === undefined) {
 				const authority = canonicalAuthority(request.headers.get("host"));
 				if (!hasLiveDshAuthCookie(request.headers.get("cookie"), authority, BROWSER_SECRET)) {
 					return new Response("dsh web authentication required; reopen the URL printed by dsh web.", {
@@ -208,5 +211,61 @@ test("resource route: a /plugins/* prefix resource requires a session", async ()
 		assert.equal(denied.status, 403);
 		const allowed = await route.resource(request("/plugins/x/bundle.js", { cookie: sessionCookie() }));
 		assert.equal(allowed.status, 200);
+	});
+});
+
+// ── in-process reads: webServer.readResource(request, peer) ───────────────────
+//
+// dsh >= 0.2.2 added `webServer.readResource(request, peer)`: it answers, without
+// an HTTP exchange, what the same URL would return, computing the response for
+// the Peer its CALLER already admitted. The host contract is explicit that such
+// a read checks no cookie, Host or Origin ("its caller admits the reader
+// first"), and frontend-static renders the page for that Peer. The gate must
+// therefore authenticate only a Peer-less request; re-applying the session
+// cookie check to an admitted read would answer a login page (or a 403) to an
+// in-process caller that never had a jar.
+
+/** A PeerScope as the host passes it to a resource on an admitted read. */
+const admittedPeer = { principal: { kind: "owner" } };
+
+test("resource fallback: an admitted in-process read gets the core page, not the login page", async () => {
+	await withPlugin(async ({ webServer }) => {
+		const res = await webServer.fallback.resource(request("/"), admittedPeer);
+		assert.equal(res.status, 200);
+		assert.equal(await res.text(), "CORE_INDEX", "the admitted reader reaches the core");
+		assert.equal(webServer.calls.length, 1);
+		assert.match(res.headers.get("content-type") ?? "", /text\/html/);
+	});
+});
+
+test("resource fallback: an admitted read never mints or injects a browser cookie", async () => {
+	await withPlugin(async ({ webServer }) => {
+		const res = await webServer.fallback.resource(request("/"), admittedPeer);
+		assert.equal(res.status, 200);
+		assert.equal(res.headers.getSetCookie().length, 0, "no jar exists for an in-process reader");
+		const seen = webServer.calls.at(-1);
+		assert.ok(!seen.cookie, "the cookie header is not manufactured for the read");
+	}, { coreAuth: true, credentials: true });
+});
+
+test("resource fallback: a Peer-less request is still gated (the peer check is not a bypass)", async () => {
+	await withPlugin(async ({ webServer }) => {
+		const res = await webServer.fallback.resource(request("/"));
+		assert.equal(res.status, 200);
+		assert.match(await res.text(), /<!doctype html>/i, "without a Peer the visitor gets the login page");
+		assert.equal(webServer.calls.length, 0, "the core is never reached");
+	});
+});
+
+test("resource route: an admitted in-process read of /plugins/* skips the session gate", async () => {
+	await withPlugin(async ({ webServer }) => {
+		const route = webServer.prefixes.get("/plugins/");
+		assert.ok(route && typeof route.resource === "function", "the prefix resource is wrapped");
+		const allowed = await route.resource(request("/plugins/x/bundle.js"), admittedPeer);
+		assert.equal(allowed.status, 200);
+		assert.equal(await allowed.text(), "BUNDLE");
+		// ...while the same path without a Peer still requires the session.
+		const denied = await route.resource(request("/plugins/x/bundle.js"));
+		assert.equal(denied.status, 403);
 	});
 });

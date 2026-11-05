@@ -5,6 +5,9 @@
 ## Unreleased
 
 - **修复（issue #19）：把共享宿主包 `@deepseek-ai/cordis`、`@deepseek-ai/dsh-home-paths`、`@deepseek-ai/schemastery` 从 `dependencies` 挪到 `peerDependencies`**。运行时直接复用宿主实例，消除 pnpm 在 profile 根 hoist 出的第二份物理拷贝，以及 DSH 插件管理页「插件在 dependencies 中声明了已知的 DSH 共享宿主包」的诊断警告；`qrcode` 仍保留在 `dependencies`。
+- **适配 dsh 0.2.2（rc.1）的两处新增表面**（在 0.3.7-next.1 的 resource 门禁之上）：
+  - **进程内已准入读取不再被二次认证。** 0.2.2 新增 `webServer.readResource(request, peer)`：它在**没有 HTTP 交换**的情况下按同一 URL 求出响应，并把它算给**调用方已准入**的那个 Peer；宿主契约明确写出这种读取**不检查 cookie / Host / Origin**（"its caller admits the reader first"），`frontend-static` 也据此跳过自己的 `authorizeIndex`。此前的 resource 包装无视 `peer` 参数、照旧按 cookie 会话判定，于是进程内读取 `/` 会拿到登录页 HTML（200）、读取 `/assets/*`、`/plugins/*` 会拿到 403。现在只在请求**不带 Peer**（即真实 HTTP 请求）时认证；带 Peer 的读取原样转发，也不为没有 Cookie 罐的读取方铸造 `dsh-auth` cookie。
+  - **PWA 安装图标在根级。** dsh 0.2.2 把安装图标从（从未存在的）`/icons/*` 搬到 web 根目录：`icon-192.png`、`icon-512.png`、`icon-maskable-512.png`、`apple-touch-icon.png`，`manifest.webmanifest` 以相对路径引用它们。浏览器在**安装时、任何会话存在之前**抓取这些图标，而放行名单只覆盖 `/manifest.webmanifest`、`/sw.js` 与 `/icons/*`，于是未登录访客拿到的是登录页 HTML，装出来的窗口没有图标。现在 `isPwaAssetPath` 一并放行根级单个路径段的 PNG（`icon*.png`、`apple-touch-icon*.png`，仍不含子目录与编码变体），沿用同一套 `no-store` 与 MIME 修正。
 
 ## 0.3.7-next.1 (2026-11-02)
 
