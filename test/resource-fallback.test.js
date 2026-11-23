@@ -130,6 +130,7 @@ async function withPlugin(run, { coreAuth = false, credentials = false } = {}) {
 		secret: HARNESS_SECRET,
 		storePath: join(dir, "accounts.json"),
 		filesRootsPath: join(dir, "files-roots.json"),
+		anonymousPathsPath: join(dir, "anonymous-paths.json"),
 		accounts: [{ username: "admin", password: "admin-password", role: "admin" }],
 		files: { enabled: false },
 	}));

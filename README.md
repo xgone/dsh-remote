@@ -147,6 +147,10 @@ Firefox 不支持按清单安装 PWA（桌面与移动端都不支持），用 F
 | `adminOnly` | `true` | 保持管理员专用；设为 `false` 后启用多账号和角色权限。 |
 | `bootstrap` | 未设置 | 无浏览器服务器预置首个管理员；首次登录后应移除明文密码。 |
 
+### 允许插件接口匿名访问
+
+从 0.3.8 起，管理员可在 **设置 → 登录与账号 → 匿名访问路径** 中添加插件接口前缀，例如 `/dsh-oh-my-claude/mcp`。该路径和它的子路径会跳过 dsh-remote 的登录 Cookie 检查，配置立即生效；插件仍须验证自己的 API key 或令牌。只添加确实自带认证的接口。`/api`、`/auth` 和根路径不可添加。
+
 完整配置项（会话、MFA、限速、gzip、文件面板和允许目录）见 [docs/REFERENCE.md](docs/REFERENCE.md#13-完整配置参考cordispatchyml)。
 
 ### 无浏览器服务器（headless）
@@ -162,6 +166,7 @@ Firefox 不支持按清单安装 PWA（桌面与移动端都不支持），用 F
 | 被锁在门外 | 将 `cordis.patch.yml` 的 `enabled` 设为 `false` 后重启；或删除 `$DSH_HOME/auth/store.json` 重新引导。 |
 | 忘记 MFA / 丢手机 | 管理员进入 **设置 → 登录与账号 → 该账号**，禁用 MFA。 |
 | 文件面板提示 `outside-roots` | 进入 **设置 → 登录与账号 → 允许的目录** 添加该目录，立即生效，无需重启。 |
+| 自带 API key 的插件接口返回 dsh-remote `unauthorized` | 将 dsh-remote 升级到 **0.3.8 或更新版本**，管理员进入 **设置 → 登录与账号 → 匿名访问路径**，添加接口路径前缀（例如 `/dsh-oh-my-claude/mcp`）。仅添加由插件自行验证凭据的路径。 |
 | 升级 dsh 后登录成功但 `/api` 全部 401 | 升级本插件（≥ 0.3.1）并**重新登录一次**，见 [CHANGELOG](CHANGELOG.md)。 |
 | 升级 dsh 后点文件路径没反应 / 不再进侧边栏 | 升级本插件（≥ 0.3.2）并重启 `dsh web`，见 [CHANGELOG](CHANGELOG.md)。 |
 | 升级 dsh 后远程设置页异常 / 反复弹窗 | 先升级本插件；新版 DSH 的远程兼容修复随版本内置，见 [CHANGELOG](CHANGELOG.md)。 |

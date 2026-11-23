@@ -60,7 +60,8 @@ dsh-remote/
 - 包装后的 HTTP 处理器流程：
   `/auth/*` 放行 → 无有效会话时页面请求返回登录页、其余 403 → 通过后**先归一化
   Host/Origin 再交给下层**（trustProxy，见 §5）→ 浏览器认证 Cookie 自愈补发（见 §6）。
-- WebSocket 升级握手：无 Cookie 直接销毁 socket。
+- **匿名访问路径（设置 → 登录与账号，仅管理员）**：为有自带认证的插件接口添加字面路径前缀，例如 `/dsh-oh-my-claude/mcp`。请求路径精确匹配或处于该前缀的子路径时，handler、resource、upgrade 与 fallback 包装器都会直接转发，不检查 dsh-remote 会话 Cookie、不铸造浏览器 Cookie，也不归一化 Host/Origin；插件仍负责校验自己的 key/token。匹配使用原始、未解码的 URL 路径，并按段边界判断，所以 `/mcp` 匹配 `/mcp/<session>`、不匹配 `/mcpfoo`。根路径、编码形式及 `/api`、`/auth` 前缀会被拒绝。列表立即生效并保存在 `$DSH_HOME/dsh-remote-anonymous-paths.json`（0600）；只应添加真正自带认证的接口。
+- WebSocket 升级握手：无 Cookie 直接销毁 socket，匿名访问路径中的 upgrade 除外。
 - 角色门禁（`enforceRoles` 开启且会话非 admin 时）：读取 RPC 信封（上限 16 MiB），按
   `method` 查拒绝表，命中返回 403；放行时用可重放请求体（`Readable` + `Proxy`）交给下层；
   admin 会话零开销。
@@ -274,6 +275,7 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 | 误删唯一管理员 | 受保护账号 + 最后管理员保护 |
 | 跨站请求（CSRF） | HttpOnly + SameSite=lax；跨站请求带不上 Cookie，门禁即 403 |
 | DNS rebinding | 认证层已接管围栏语义；未认证请求不会到达围栏 |
+| 匿名访问路径 | 仅管理员配置；保留 `/api`、`/auth` 与根路径；必须由目标插件验证自己的凭据 |
 | 任意文件读取 | realpath 校验 + 允许目录白名单 + 符号链接 / `..` 拒绝 |
 
 ## 13. 完整配置参考（cordis.patch.yml）
@@ -318,6 +320,8 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
       cookieTtlSeconds: 0    # 0 = 跟随 session.ttlSeconds；上限 client-connection.cookieMaxAgeDays
 ```
 
+匿名访问路径不是 `cordis.patch.yml` 字段：管理员在 **设置 → 登录与账号 → 匿名访问路径** 中即时维护；列表持久化到 `$DSH_HOME/dsh-remote-anonymous-paths.json`。
+
 ## 14. HTTP 端点一览
 
 | 方法 | 路径 | 说明 |
@@ -331,6 +335,7 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 | POST | `/auth/mfa/verify` | 用动态码确认 pending 设置 |
 | POST | `/auth/mfa/disable` | 关闭本账号 MFA（需密码 + 有效动态码/备用码） |
 | POST | `/auth/accounts` | 管理员：`{action: list\|upsert\|remove\|disable-mfa, ...}` |
+| GET / POST | `/auth/anonymous-paths` | 管理员读取/维护匿名访问路径：`{action: add\|remove, path}` |
 | GET | `/auth/file` | 远程文件面板的流式文件读取（受允许目录白名单约束）；`format=json` 供面板的目录浏览；`format=text` + `.docx` 返回服务端提取的纯文本（ZIP 解析 + zlib 解压 + XML 剥离，≤64MB 源 / 2MB 文本，结构异常返回 415 让面板回落下载卡片） |
 
 ## 15. 已处理的 DSH 远程浏览器怪癖（settings memory 模式系列）
