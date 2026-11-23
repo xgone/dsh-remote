@@ -2,6 +2,11 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.8 (2026-11-23)
+
+- **新增管理员可配置的匿名访问路径**（设置 → 登录与账号）：为自带 API key/令牌认证的插件路由配置路径前缀，使其跳过 dsh-remote 的会话 Cookie 检查；路径立即生效并持久化。按原始 URL 路径与段边界匹配，禁止根路径、编码路径及 `/api`、`/auth` 前缀；提示管理员只放行由目标插件自行认证的接口。覆盖 node handler、Fetch resource、upgrade 与 fallback。
+- 新增匿名路径校验、持久化、管理接口和路由放行测试。
+
 ## 0.3.7-next.2 (2026-11-05)
 
 > 预发布：在 0.3.7-next.1（dsh 0.2.2-alpha 的 resource 门禁）之上，补齐 dsh **0.2.2-rc.1** 的两处新增表面；发布在 npm `latest` 与 `next` 两个标签下。

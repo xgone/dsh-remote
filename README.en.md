@@ -147,6 +147,10 @@ Edit the `config` of the `remote` row in `~/.dsh/profiles/web/cordis.patch.yml`:
 | `adminOnly` | `true` | Keep the deployment admin-only; set `false` to enable multi-account roles. |
 | `bootstrap` | unset | Provision the first admin on a headless server; remove the plaintext password after the first login. |
 
+### Allowing plugin endpoints without a browser session
+
+Starting with 0.3.8, admins can add a plugin endpoint prefix under **Settings → Auth & Accounts → Anonymous paths**, for example `/dsh-oh-my-claude/mcp`. That path and its descendants skip dsh-remote's session-cookie check and take effect immediately; the plugin must still validate its own API key or token. Add only endpoints that provide their own authentication. `/api`, `/auth`, and the root path are reserved.
+
 See [docs/REFERENCE.md](docs/REFERENCE.md#13-full-configuration-reference) for sessions, MFA, rate limiting, gzip, the file panel, allowed roots, and all other options.
 
 ### Headless servers (no local browser)
@@ -162,6 +166,7 @@ Add the `bootstrap` block above to `cordis.patch.yml` and restart. The first adm
 | Locked out | Set `enabled: false` in `cordis.patch.yml` and restart; or delete `$DSH_HOME/auth/store.json` to re-enter bootstrap mode. |
 | Lost MFA / phone | As admin, go to **Settings → Auth & Accounts → that account** and disable MFA. |
 | File panel reports `outside-roots` | Go to **Settings → Auth & Accounts → Allowed directories** and add the directory. The change applies immediately. |
+| A plugin endpoint with its own API key returns dsh-remote `unauthorized` | Upgrade dsh-remote to **0.3.8 or newer**, then as admin go to **Settings → Auth & Accounts → Anonymous paths** and add the endpoint prefix (for example `/dsh-oh-my-claude/mcp`). Only add paths whose plugin validates its own credentials. |
 | After a dsh upgrade every `/api` call returns 401 despite a successful login | Upgrade this plugin (≥ 0.3.1) and **sign in once more**; see [CHANGELOG](CHANGELOG.md). |
 | After a dsh upgrade clicking a file path does nothing / never opens the sidebar | Upgrade this plugin (≥ 0.3.2) and restart `dsh web`; see [CHANGELOG](CHANGELOG.md). |
 | Settings pages misbehave / popups return after a dsh upgrade | Upgrade this plugin first; compatibility fixes for new DSH versions ship built-in. See [CHANGELOG](CHANGELOG.md). |
