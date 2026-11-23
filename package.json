@@ -1,6 +1,6 @@
 {
   "name": "@xgone/dsh-remote",
-  "version": "0.3.8",
+  "version": "0.3.9-oidc.1",
   "description": "Remote access and authentication for the DeepSeek Harness web UI: login gate, MFA, signed session cookies, role-based access, anonymous plugin-path controls, in-browser directory picker, and account management. Fully localized (zh/en).",
   "type": "module",
   "main": "lib/index.js",

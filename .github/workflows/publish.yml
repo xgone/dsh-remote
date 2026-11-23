@@ -1,8 +1,8 @@
 name: Publish to npm
 
 # 创建形如 v0.1.0（或 0.1.0）的 tag 时触发，校验版本号与 package.json 一致后发布到 npm。
-# 需要仓库 Secrets 里有 NPM_TOKEN（npm granular token，需勾选 bypass 2FA for publishing）：
-#   https://github.com/xgone/dsh-remote/settings/secrets/actions
+# 通过 npm Trusted Publishing 使用 GitHub Actions OIDC；npm 包的 Trusted Publisher
+# 配置应指定 xgone/dsh-remote 与本工作流文件名 publish.yml。
 
 on:
   push:
@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -58,7 +59,5 @@ jobs:
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish to npm
-        run: pnpm publish --access public --no-git-checks --tag "${{ steps.dist-tag.outputs.tag }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm with Trusted Publishing
+        run: npm publish --access public --tag "${{ steps.dist-tag.outputs.tag }}"

@@ -2,6 +2,12 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.3.9-oidc.1 (2026-11-23)
+
+> 用于验证 npm Trusted Publishing 的预发布版本，沿用 0.3.8 功能。
+
+- **迁移 npm 发布工作流至 OIDC Trusted Publishing**：GitHub Actions 使用 `id-token: write`，从固定发布工作流直接向 npm 发布，移除长期有效的 `NPM_TOKEN` 发布 Secret。
+
 ## 0.3.8 (2026-11-23)
 
 - **新增管理员可配置的匿名访问路径**（设置 → 登录与账号）：为自带 API key/令牌认证的插件路由配置路径前缀，使其跳过 dsh-remote 的会话 Cookie 检查；路径立即生效并持久化。按原始 URL 路径与段边界匹配，禁止根路径、编码路径及 `/api`、`/auth` 前缀；提示管理员只放行由目标插件自行认证的接口。覆盖 node handler、Fetch resource、upgrade 与 fallback。
