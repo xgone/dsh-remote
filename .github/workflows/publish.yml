@@ -3,6 +3,7 @@ name: Publish to npm
 # 创建形如 v0.1.0（或 0.1.0）的 tag 时触发，校验版本号与 package.json 一致后发布到 npm。
 # 通过 npm Trusted Publishing 使用 GitHub Actions OIDC；npm 包的 Trusted Publisher
 # 配置应指定 xgone/dsh-remote 与本工作流文件名 publish.yml。
+# OIDC dist-tag 操作需要 npm CLI >= 11.21.0。
 
 on:
   push:
@@ -48,8 +49,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.22.3
           registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for Trusted Publishing dist-tags
+        run: npm install --global npm@11.21.0
+
+      - name: Show npm CLI version
+        run: npm --version
 
       - name: Install dependencies
         if: github.event_name == 'push'
