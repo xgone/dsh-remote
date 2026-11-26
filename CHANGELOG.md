@@ -2,6 +2,11 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 未发布
+
+- **修复 dsh 0.2.3-alpha 的远程认证路由冲突（issue #34）**：为 dsh-remote 自己的登录平面与 SPA fallback 设置 Core anonymous 策略，让插件密码登录门禁先处理浏览器请求；`auth: "anonymous"` 路由仍经过 dsh-remote 会话门禁，不会让官方 Remote cookie 单独放行应用。登录后补发 Core Cookie，并让 Node handler、upgrade 与 fallback 透传 Peer，避免 Connection RPC 丢失身份。匿名路径前缀也同步映射到新 Core 的路由策略；旧版 dsh 继续执行原有门禁行为。
+- 新增 dsh 0.2.3 兼容性回归测试，覆盖匿名路由、旧版门禁、Peer 透传和 fallback 登录页。
+
 ## 0.3.9-oidc.1 (2026-11-23)
 
 > 用于验证 npm Trusted Publishing 的预发布版本，沿用 0.3.8 功能。
