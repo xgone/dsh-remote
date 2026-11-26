@@ -54,13 +54,16 @@ dsh-remote/
 - **`peer` 是「准入凭据」而不是请求字段（0.3.7-next.2）**：0.2.2 的
   `webServer.readResource(request, peer)` 按同一 URL 求出响应，把它算给**调用方已准入**的 Peer，
   宿主契约明确写出这种进程内读取不检查 cookie / Host / Origin（`frontend-static` 同样跳过
-  自己的 `authorizeIndex`）。因此 resource 门禁只在 `peer === undefined`（真实 HTTP 请求，
-  `serveResource` 不传 Peer）时做会话认证；带 Peer 的读取原样转发、不铸 cookie。否则进程内读
-  `/` 会得到登录页、读 `/assets/*` 与 `/plugins/*` 会得到 403。
+  自己的 `authorizeIndex`）。0.2.2 的 HTTP `serveResource` 不传 Peer；dsh 0.2.3 起，HTTP 路由
+  经过 `auth: "required"` 准入后也会把 Peer 传给 resource。resource 包装器在 Peer 已存在时
+  信任宿主准入并透传、不铸 cookie；仅对 Peer-less 请求执行 dsh-remote 会话认证（匿名路由在
+  新 host 上按声明透传）。这样进程内读取、核心已准入的 HTTP 请求不会误拿登录页或 403。
+- **dsh ≥ 0.2.3 的 WebServer 路由鉴权**：该版本在调用 handler/resource 之前根据路由 `auth` 策略做准入，`connection.authentication` 负责为 `required` 路由提供 Peer。`auth: "anonymous"` 只跳过 DSH Core 的凭据准入；dsh-remote 仍执行自己的会话检查，除非管理员在「匿名访问路径」明确放行。dsh-remote 自己的 `/auth/*` 路由与 SPA fallback 声明为 Core anonymous，让插件登录页有机会先处理请求；成功登录后再由 dsh-remote 补发 Core Cookie，Node handler/upgrade 透传已准入 Peer 给 Connection（issue #34）。dsh-remote 的匿名路径配置也会为匹配路由覆写 Core 的默认 `required`，但不会覆写明确的 `deny`。所有 Core anonymous 路由仍经过 DSH 的 Host/Origin 来源围栏。
 - 包装后的 HTTP 处理器流程：
   `/auth/*` 放行 → 无有效会话时页面请求返回登录页、其余 403 → 通过后**先归一化
   Host/Origin 再交给下层**（trustProxy，见 §5）→ 浏览器认证 Cookie 自愈补发（见 §6）。
 - **匿名访问路径（设置 → 登录与账号，仅管理员）**：为有自带认证的插件接口添加字面路径前缀，例如 `/dsh-oh-my-claude/mcp`。请求路径精确匹配或处于该前缀的子路径时，handler、resource、upgrade 与 fallback 包装器都会直接转发，不检查 dsh-remote 会话 Cookie、不铸造浏览器 Cookie，也不归一化 Host/Origin；插件仍负责校验自己的 key/token。匹配使用原始、未解码的 URL 路径，并按段边界判断，所以 `/mcp` 匹配 `/mcp/<session>`、不匹配 `/mcpfoo`。根路径、编码形式及 `/api`、`/auth` 前缀会被拒绝。列表立即生效并保存在 `$DSH_HOME/dsh-remote-anonymous-paths.json`（0600）；只应添加真正自带认证的接口。
+- dsh 0.2.3 上，如果管理员为某前缀配置了匿名访问，dsh-remote 还会把该请求的宿主路由策略从默认 `required` 调为 `anonymous`，避免核心在包装器运行前先返回 401；明确 `deny` 的路由仍拒绝。
 - WebSocket 升级握手：无 Cookie 直接销毁 socket，匿名访问路径中的 upgrade 除外。
 - 角色门禁（`enforceRoles` 开启且会话非 admin 时）：读取 RPC 信封（上限 16 MiB），按
   `method` 查拒绝表，命中返回 403；放行时用可重放请求体（`Readable` + `Proxy`）交给下层；
