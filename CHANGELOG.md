@@ -2,7 +2,7 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
-## 未发布
+## 0.4.1 (2026-11-28)
 
 - **多语言适配：跟随 DSH 客户端的语言切换（issue #39）**：客户端设置页与重登浮层的文案字典扩展到 DSH 内置的全部 8 种语言（en、zh、ja、es、fr、de、ru、pt），通过 `ctx.locale.register` 注册并随语言设置实时切换；此前仅中英文，其余语言回退英文。登录页（服务端渲染）也按同一组语言输出，按 `locale.preference` → `Accept-Language`（q 值、整标签后主子标签匹配）→ 英文 的顺序选择，并同步 `<html lang>`。新增语言协商、登录页渲染与字典一致性的回归测试。
 
