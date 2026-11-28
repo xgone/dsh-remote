@@ -2,6 +2,21 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 0.4.2 (2026-11-28)
+
+- **安全加固（agy 安全审查，出口网关严格要求）**：本版本包含首次管理员引导的行为变更——升级后首次创建管理员需从启动日志取得 `bootstrapToken`（或配置固定值），详见下方条目。
+  - 首次管理员引导改为**引导令牌**（`bootstrapToken` / 启动日志自动生成），不再把可伪造的 `Host` 头当作 loopback 判据；失败按来源限速。
+  - `/auth/file` 增加敏感路径黑名单：`$DSH_HOME/auth`、`profiles`、`storages`、`.credentials.yaml`、`settings.yaml*` 与插件自身账号库永不可读；`$DSH_HOME` 下仅开放 `sessions`/`attachments`；`allowedRoots` 详情仅管理员可见。
+  - `/auth/file` 对 HTML/SVG/JS 等活动内容改以 `text/plain` 输出并加 `Content-Security-Policy: sandbox`，消除同源存储型 XSS；目录列表与文件响应补 `nosniff`。
+  - 路径包含校验改为“词法先行 + realpath 复核”，拒绝 UNC/设备路径，避免主机文件系统存在性预言机与 Windows SMB/NTLM 外连。
+  - 所有 `/auth/*` 写操作增加 `Sec-Fetch-Site`/`Origin`（支持可信代理 `X-Forwarded-Host`）与 `application/json` 校验，缓解 CSRF。
+  - 登出与重置密码递增账号 `sessionEpoch`，旧会话令牌立即失效；HTTPS 请求自动为会话 Cookie 加 `Secure`。
+  - MFA 绑定/验证/关闭及管理员禁用 MFA 增加限速；绑定 MFA 必须重新校验当前密码，且不会覆盖已启用的第二因素。
+  - 限速来源在 `trustProxy` 下改用右侧（可信代理追加）的 `X-Forwarded-For` 跳，避免左值伪造绕过；限速表定期清理过期项。
+  - 缓存策略收紧：`/api`、`/auth` 与含 `Set-Cookie` 的响应不再获得静态长缓存；`.docx` 解压限制输出上限、XML 去标签改为线性扫描，修复解压炸弹与 ReDoS。
+  - 登录页增加 CSP nonce、同源 `next` 白名单、`X-Frame-Options`/`Referrer-Policy`/`nosniff` 响应头。
+  - 新增 `test/security-regressions.test.js` 覆盖引导令牌、敏感文件拒绝、活动内容降级、会话吊销与登录跳转净化。
+
 ## 0.4.1 (2026-11-28)
 
 - **多语言适配：跟随 DSH 客户端的语言切换（issue #39）**：客户端设置页与重登浮层的文案字典扩展到 DSH 内置的全部 8 种语言（en、zh、ja、es、fr、de、ru、pt），通过 `ctx.locale.register` 注册并随语言设置实时切换；此前仅中英文，其余语言回退英文。登录页（服务端渲染）也按同一组语言输出，按 `locale.preference` → `Accept-Language`（q 值、整标签后主子标签匹配）→ 英文 的顺序选择，并同步 `<html lang>`。新增语言协商、登录页渲染与字典一致性的回归测试。
