@@ -27,7 +27,7 @@ dsh-remote/
 │   ├── index.js       # 宿主半区：门禁、会话、限速、角色、trustProxy、/auth/* 路由、gzip、文件服务
 │   ├── store.js       # 账号存储（scrypt 哈希、受保护标记、TOTP 状态、备用码哈希）
 │   ├── totp.js        # RFC 6238 TOTP / base32 / otpauth URI / 备用码（零依赖）
-│   ├── login-page.js  # 自包含登录页（密码 → 动态码 → 绑定引导，含二维码），zh/en
+│   ├── login-page.js  # 自包含登录页（密码 → 动态码 → 绑定引导，含二维码），8 种 DSH 语言
 │   ├── files-store.js # 允许目录的持久化（dsh-remote-files.json，0600 原子写入）
 │   └── client.js      # 浏览器半区：重登浮层、设置页「登录与账号」、远程文件侧栏、语言持久化
 ├── test/              # node --test：gzip / remote-file / role-gate / files-store / browser-auth / pwa / resource-fallback
@@ -219,8 +219,9 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 - 绑定步骤：二维码（`/auth/mfa/setup` 返回 SVG data URL）+ 手动密钥 + otpauth + 备用码 +
   验证输入，成功跳转 `next`；
 - 表单 `novalidate` + JS 手动校验（避免隐藏必填控件阻塞提交）；
-- 服务端渲染时语言取 `$DSH_HOME/settings.yaml` 的 `locale.preference`，未设置回落浏览器
-  `Accept-Language`。
+- 服务端渲染语言按 `locale.preference`（`$DSH_HOME/settings.yaml`）→ 浏览器
+  `Accept-Language`（按 q 值、整标签后主子标签匹配）→ 英文 的顺序选择，覆盖 DSH 内置的
+  en / zh / ja / es / fr / de / ru / pt 八种语言，`<html lang>` 同步。
 
 ## 10. 浏览器半区（lib/client.js）
 
@@ -247,7 +248,7 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
   的 `isLoopback` 事实翻转为真——客户端半区的 `trustProxy`：门禁层已放行认证请求，服务端
   角色门禁仍是执行点（`session.openWorkspacePath` 等原生打开方法对非 admin 拒绝）。
 - **主题**：全部界面用官方设计令牌 `--dsw-alias-*` 取色，自动跟随 DSH 浅色 / 深色 / 跟随系统。
-- **语言**：接入官方 `@deepseek-ai/dsh-client-locale`（`ctx.locale`），注册 zh/en 字典实时切换。
+- **语言**：接入官方 `@deepseek-ai/dsh-client-locale`（`ctx.locale`），注册 en / zh / ja / es / fr / de / ru / pt 八种字典，随 DSH 语言设置实时切换（issue #39）。
 
 ## 11. 目录选择器替换（cordis.patch.yml）
 

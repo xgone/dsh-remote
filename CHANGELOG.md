@@ -2,6 +2,10 @@
 
 用户指南见 [README](README.md)；实现细节见 [docs/REFERENCE.md](docs/REFERENCE.md)。
 
+## 未发布
+
+- **多语言适配：跟随 DSH 客户端的语言切换（issue #39）**：客户端设置页与重登浮层的文案字典扩展到 DSH 内置的全部 8 种语言（en、zh、ja、es、fr、de、ru、pt），通过 `ctx.locale.register` 注册并随语言设置实时切换；此前仅中英文，其余语言回退英文。登录页（服务端渲染）也按同一组语言输出，按 `locale.preference` → `Accept-Language`（q 值、整标签后主子标签匹配）→ 英文 的顺序选择，并同步 `<html lang>`。新增语言协商、登录页渲染与字典一致性的回归测试。
+
 ## 0.4.0 (2026-11-26)
 
 - **修复 dsh 0.2.3-alpha 的远程认证路由冲突（issue #34）**：为 dsh-remote 自己的登录平面与 SPA fallback 设置 Core anonymous 策略，让插件密码登录门禁先处理浏览器请求；`auth: "anonymous"` 路由仍经过 dsh-remote 会话门禁，不会让官方 Remote cookie 单独放行应用。登录后补发 Core Cookie，并让 Node handler、upgrade 与 fallback 透传 Peer，避免 Connection RPC 丢失身份。匿名路径前缀也同步映射到新 Core 的路由策略；旧版 dsh 继续执行原有门禁行为。
