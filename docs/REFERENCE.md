@@ -219,6 +219,13 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 - 绑定步骤：二维码（`/auth/mfa/setup` 返回 SVG data URL）+ 手动密钥 + otpauth + 备用码 +
   验证输入，成功跳转 `next`；
 - 表单 `novalidate` + JS 手动校验（避免隐藏必填控件阻塞提交）；
+- 首次管理员引导必须提交**引导令牌**（启动时随机生成，打印到日志并写入
+  `$DSH_HOME/dsh-remote-bootstrap-token.txt`；可用 `DSH_REMOTE_BOOTSTRAP_TOKEN` 或
+  `bootstrapToken` 配置固定，至少 16 位）：Host 头可被反向代理/隧道改写，不能作为 loopback 判据；令牌校验失败会计入
+  限速（整机一个桶），避免远程抢占首个管理员；
+- 页面硬化：每次渲染生成 CSP nonce（`script-src 'nonce-…'`、`default-src 'none'`），
+  `next` 只允许同源绝对路径（拒绝 `//host`、反斜杠与控制字符），响应带
+  `X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`X-Content-Type-Options: nosniff`；
 - 服务端渲染语言按 `locale.preference`（`$DSH_HOME/settings.yaml`）→ 浏览器
   `Accept-Language`（按 q 值、整标签后主子标签匹配）→ 英文 的顺序选择，覆盖 DSH 内置的
   en / zh / ja / es / fr / de / ru / pt 八种语言，`<html lang>` 同步。
@@ -275,12 +282,17 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 | 密码爆破 | scrypt + 限速（IP+用户名） |
 | 会话伪造 / 篡改 | HMAC 签名 + 过期 + 常量时间比较 + 账号存在性校验 |
 | 会话重放（MFA 第二步） | 一次性 nonce + 5 分钟 TTL |
-| 远程抢先注册管理员 | bootstrap 仅 loopback |
+| 远程抢先注册管理员 | 首次引导需服务端日志打印的 bootstrapToken（Host 头不再作为判据），失败限速 |
 | 误删唯一管理员 | 受保护账号 + 最后管理员保护 |
-| 跨站请求（CSRF） | HttpOnly + SameSite=lax；跨站请求带不上 Cookie，门禁即 403 |
+| 跨站请求（CSRF） | HttpOnly + SameSite；所有 `/auth/*` 写操作校验 `Sec-Fetch-Site`/`Origin`（含可信代理的 `X-Forwarded-Host`）并要求 `application/json` |
 | DNS rebinding | 认证层已接管围栏语义；未认证请求不会到达围栏 |
 | 匿名访问路径 | 仅管理员配置；保留 `/api`、`/auth` 与根路径；必须由目标插件验证自己的凭据 |
-| 任意文件读取 | realpath 校验 + 允许目录白名单 + 符号链接 / `..` 拒绝 |
+| 任意文件读取 | 先做词法包含校验（不触碰文件系统，避免存在性预言机），再 realpath 复核；拒绝 UNC/设备路径；符号链接 / `..` 拒绝 |
+| 敏感文件泄露 | 文件面板永不暴露 `$DSH_HOME/auth`、`profiles`、`storages`、`.credentials.yaml`、`settings.yaml*` 及插件自身账号库；`$DSH_HOME` 下仅允许 `sessions`、`attachments` |
+| 同源存储型 XSS | `/auth/file` 对 HTML/SVG/JS 等活动内容改为 `text/plain` + `Content-Security-Policy: sandbox`；登录页 CSP nonce |
+| 会话重放 / 登出后旧令牌 | 会话令牌含账号 `sessionEpoch`，登出与重置密码都会递增该版本，旧令牌立即失效 |
+| 缓存投毒 / CDN 泄露 | 仅静态扩展名 + 静态前缀可缓存；含 `Set-Cookie` 的响应禁止公共缓存；`/api`、`/auth` 永不进入静态缓存 |
+| 解压炸弹 / ReDoS | `.docx` 解压限制声明与实际输出大小；XML 去标签改为单次线性扫描 |
 
 ## 13. 完整配置参考（cordis.patch.yml）
 

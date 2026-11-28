@@ -63,7 +63,13 @@ dsh web
 
 ### 3. Create the first admin
 
-Open `http://127.0.0.1:3080` in a local browser. The first visit enters bootstrap mode: enter a username and password (at least 6 characters) to create the first admin, then you are signed in automatically.
+On first start the server prints a one-time bootstrap token:
+
+```
+dsh-remote: first-admin bootstrap token: <random token>
+```
+
+The token is also written to `$DSH_HOME/dsh-remote-bootstrap-token.txt` (0600); you can pin it with the `DSH_REMOTE_BOOTSTRAP_TOKEN` env var or the `bootstrapToken` config. Open `http://127.0.0.1:3080`, then in bootstrap mode enter a username, a password (at least 6 characters) and that token to create the first admin; you are signed in automatically afterwards and the token stops working once an account exists.
 
 > Server without a local browser? See [headless servers](#headless-servers-no-local-browser).
 
@@ -146,6 +152,7 @@ Edit the `config` of the `remote` row in `~/.dsh/profiles/web/cordis.patch.yml`:
 | `session.secure` | `false` | Set `true` for HTTPS so session cookies are sent only over secure connections. |
 | `adminOnly` | `true` | Keep the deployment admin-only; set `false` to enable multi-account roles. |
 | `bootstrap` | unset | Provision the first admin on a headless server; remove the plaintext password after the first login. |
+| `bootstrapToken` | empty | First-admin bootstrap token; empty generates and logs a random token per start. Remote deployments must present it, which prevents a spoofed Host header from claiming the first admin. |
 
 ### Allowing plugin endpoints without a browser session
 
@@ -162,7 +169,7 @@ Add the `bootstrap` block above to `cordis.patch.yml` and restart. The first adm
 | Symptom | Fix |
 |---|---|
 | No login page after install | Restart `dsh web`; confirm `@xgone/dsh-remote` is in the bundles list. |
-| 403 when creating the admin | The first admin is loopback-only: use a local browser or reach `127.0.0.1` through `ssh -L`; on a headless server use `bootstrap`. |
+| 403 when creating the admin | The bootstrap token printed in the server log (or the configured `bootstrapToken`) is required; headless servers can use the `bootstrap` config instead. |
 | Locked out | Set `enabled: false` in `cordis.patch.yml` and restart; or delete `$DSH_HOME/auth/store.json` to re-enter bootstrap mode. |
 | Lost MFA / phone | As admin, go to **Settings → Auth & Accounts → that account** and disable MFA. |
 | File panel reports `outside-roots` | Go to **Settings → Auth & Accounts → Allowed directories** and add the directory. The change applies immediately. |
