@@ -219,10 +219,10 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 - 绑定步骤：二维码（`/auth/mfa/setup` 返回 SVG data URL）+ 手动密钥 + otpauth + 备用码 +
   验证输入，成功跳转 `next`；
 - 表单 `novalidate` + JS 手动校验（避免隐藏必填控件阻塞提交）；
-- 首次管理员引导必须提交**引导令牌**（启动时随机生成，打印到日志并写入
-  `$DSH_HOME/dsh-remote-bootstrap-token.txt`；可用 `DSH_REMOTE_BOOTSTRAP_TOKEN` 或
-  `bootstrapToken` 配置固定，至少 16 位）：Host 头可被反向代理/隧道改写，不能作为 loopback 判据；令牌校验失败会计入
-  限速（整机一个桶），避免远程抢占首个管理员；
+- 首次管理员引导保持「用户名 + 密码」的原有交互：服务端只接受**真实本机请求**——TCP 对端是
+  回环地址、Host 是严格回环 authority，且不存在任何代理转发头（`X-Forwarded-*`、`Forwarded`、
+  `CF-Connecting-IP` 等）；Host 头本身不再作为判据。经反向代理/隧道对外的全新部署可配置
+  `bootstrapToken` / `DSH_REMOTE_BOOTSTRAP_TOKEN`（至少 16 位）随引导请求提交；失败计入限速；
 - 页面硬化：每次渲染生成 CSP nonce（`script-src 'nonce-…'`、`default-src 'none'`），
   `next` 只允许同源绝对路径（拒绝 `//host`、反斜杠与控制字符），响应带
   `X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`X-Content-Type-Options: nosniff`；
@@ -282,7 +282,7 @@ dsh 进程工作目录、旧配置 `files.roots`）只读并列展示，不受�
 | 密码爆破 | scrypt + 限速（IP+用户名） |
 | 会话伪造 / 篡改 | HMAC 签名 + 过期 + 常量时间比较 + 账号存在性校验 |
 | 会话重放（MFA 第二步） | 一次性 nonce + 5 分钟 TTL |
-| 远程抢先注册管理员 | 首次引导需服务端日志打印的 bootstrapToken（Host 头不再作为判据），失败限速 |
+| 远程抢先注册管理员 | 首次引导仅接受真实本机请求（回环对端 + 严格回环 Host + 无代理转发头）；代理部署可用 bootstrapToken；失败限速 |
 | 误删唯一管理员 | 受保护账号 + 最后管理员保护 |
 | 跨站请求（CSRF） | HttpOnly + SameSite；所有 `/auth/*` 写操作校验 `Sec-Fetch-Site`/`Origin`（含可信代理的 `X-Forwarded-Host`）并要求 `application/json` |
 | DNS rebinding | 认证层已接管围栏语义；未认证请求不会到达围栏 |
