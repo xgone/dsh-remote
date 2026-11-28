@@ -18,8 +18,8 @@
   ],
   "scripts": {
     "check": "node --check lib/index.js && node --check lib/client.js",
-    "test": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js test/docx-extract.test.js test/file-kind.test.js test/pwa.test.js test/resource-fallback.test.js test/anonymous-paths.test.js test/core-auth-compat.test.js",
-    "prepublishOnly": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js test/docx-extract.test.js test/file-kind.test.js test/pwa.test.js test/resource-fallback.test.js test/anonymous-paths.test.js test/core-auth-compat.test.js"
+    "test": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js test/docx-extract.test.js test/file-kind.test.js test/pwa.test.js test/resource-fallback.test.js test/anonymous-paths.test.js test/core-auth-compat.test.js test/locale-i18n.test.js",
+    "prepublishOnly": "node --check lib/index.js && node --check lib/client.js && node --test test/gzip.test.js test/remote-file.test.js test/role-gate.test.js test/files-store.test.js test/browser-auth.test.js test/open-path-shape.test.js test/docx-extract.test.js test/file-kind.test.js test/pwa.test.js test/resource-fallback.test.js test/anonymous-paths.test.js test/core-auth-compat.test.js test/locale-i18n.test.js"
   },
   "license": "MIT",
   "author": "xgone <xl.gone@gmail.com>",

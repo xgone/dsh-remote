@@ -37,7 +37,7 @@
 - **Remote access**: works behind nginx, SSH tunnels, Tailscale, Frp, Cloudflare Tunnel, and similar transports with end-to-end WebSocket events.
 - **Installable as a desktop or phone app**: the manifest, Service Worker, and icons are served before sign-in, so DSH installs into its own window on desktop and mobile, with the cookie repaired on a cold launch. See [Install as an app](#install-as-an-app-pwa).
 - **Browser-native workspace flow**: selecting or creating a workspace uses an in-browser directory dialog instead of opening a host OS file picker.
-- **Localized and lightweight**: follows DSH light / dark theme and language, with English and Chinese UI; remote responses are gzipped by default and hashed assets work well with edge caches.
+- **Localized and lightweight**: follows the DSH light / dark theme and language setting (English, Chinese, Japanese, Spanish, French, German, Russian, Portuguese); remote responses are gzipped by default and hashed assets work well with edge caches.
 
 ## Screenshots
 
