@@ -33,13 +33,13 @@ function makeWebServer() {
 	return server;
 }
 
-function nodeRequest(url, { method = "GET", cookie, body, host = "dsh.example" } = {}) {
+function nodeRequest(url, { method = "GET", cookie, body, host = "dsh.example", remoteAddress = "127.0.0.1", headers = {} } = {}) {
 	const req = Readable.from(body === undefined ? [] : [Buffer.from(body)]);
 	req.url = url;
 	req.method = method;
-	req.headers = { host };
+	req.headers = { host, ...headers };
 	if (cookie !== undefined) req.headers.cookie = cookie;
-	req.socket = { remoteAddress: "127.0.0.1" };
+	req.socket = { remoteAddress };
 	return req;
 }
 
@@ -86,36 +86,62 @@ async function withPlugin(config, run) {
 
 // ── first-admin bootstrap ────────────────────────────────────────────────────
 
-test("bootstrap: a loopback-looking Host is not enough without the bootstrap token", async () => {
-	await withPlugin({ accounts: [], bootstrapToken: BOOTSTRAP_TOKEN }, async ({ webServer }) => {
+test("bootstrap: a remote client cannot bootstrap by forging a loopback Host", async () => {
+	await withPlugin({ accounts: [] }, async ({ webServer }) => {
 		const route = webServer.exact.get("/auth/bootstrap");
 		assert.ok(route, "bootstrap route registered");
-		for (const payload of [
-			{ username: "attacker", password: "hunter22" },
-			{ username: "attacker", password: "hunter22", bootstrapToken: "wrong-token" }
-		]) {
+		const forged = [
+			// Remote socket + loopback Host (the old exploit).
+			nodeRequest("/auth/bootstrap", {
+				method: "POST", host: "127.0.0.1", remoteAddress: "203.0.113.5",
+				body: JSON.stringify({ username: "attacker", password: "hunter22" })
+			}),
+			// Loopback socket but a proxied request (forwarding header present).
+			nodeRequest("/auth/bootstrap", {
+				method: "POST", host: "127.0.0.1",
+				headers: { "x-forwarded-for": "203.0.113.5" },
+				body: JSON.stringify({ username: "attacker", password: "hunter22" })
+			}),
+			// Public Host on a loopback socket (an nginx-style proxy preserving Host).
+			nodeRequest("/auth/bootstrap", {
+				method: "POST", host: "gateway.example",
+				body: JSON.stringify({ username: "attacker", password: "hunter22" })
+			})
+		];
+		for (const request of forged) {
 			const res = response();
-			await route.handler(nodeRequest("/auth/bootstrap", {
-				method: "POST",
-				// A remote client can forge this header; the token is the real gate.
-				host: "127.0.0.1",
-				body: JSON.stringify(payload)
-			}), res);
-			assert.equal(res.status, 403, JSON.stringify(payload));
+			await route.handler(request, res);
+			assert.equal(res.status, 403, `${request.headers.host} ${request.socket.remoteAddress}`);
 		}
 	});
 });
 
-test("bootstrap: the correct token creates the first admin", async () => {
-	await withPlugin({ accounts: [], bootstrapToken: BOOTSTRAP_TOKEN }, async ({ webServer }) => {
-		const route = webServer.exact.get("/auth/bootstrap");
+test("bootstrap: a local browser keeps the username + password flow (no token)", async () => {
+	await withPlugin({ accounts: [] }, async ({ webServer }) => {
 		const res = response();
-		await route.handler(nodeRequest("/auth/bootstrap", {
-			method: "POST",
-			body: JSON.stringify({ username: "firstadmin", password: "hunter22", bootstrapToken: BOOTSTRAP_TOKEN })
+		await webServer.exact.get("/auth/bootstrap").handler(nodeRequest("/auth/bootstrap", {
+			method: "POST", host: "127.0.0.1",
+			body: JSON.stringify({ username: "firstadmin", password: "hunter22" })
 		}), res);
 		assert.equal(res.status, 200);
 		assert.equal(JSON.parse(res.body).ok, true);
+	});
+});
+
+test("bootstrap: a proxied deployment may configure a bootstrap token", async () => {
+	await withPlugin({ accounts: [], bootstrapToken: BOOTSTRAP_TOKEN }, async ({ webServer }) => {
+		const route = webServer.exact.get("/auth/bootstrap");
+		const proxied = (token) => nodeRequest("/auth/bootstrap", {
+			method: "POST", host: "gateway.example",
+			headers: { "x-forwarded-for": "203.0.113.5" },
+			body: JSON.stringify({ username: "firstadmin", password: "hunter22", bootstrapToken: token })
+		});
+		const denied = response();
+		await route.handler(proxied("wrong-token-value"), denied);
+		assert.equal(denied.status, 403);
+		const allowed = response();
+		await route.handler(proxied(BOOTSTRAP_TOKEN), allowed);
+		assert.equal(allowed.status, 200);
 	});
 });
 
